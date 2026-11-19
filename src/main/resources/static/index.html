@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RuleBot - Chat</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background-color: #4a90d9;
+            color: white;
+            padding: 16px 20px;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .connection-status {
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background-color: #e74c3c;
+        }
+
+        .connection-status.connected {
+            background-color: #27ae60;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background-color: #4a90d9;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.bot {
+            align-self: flex-start;
+            background-color: white;
+            color: #333;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .message .intent {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .input-area {
+            padding: 16px 20px;
+            background-color: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 12px;
+        }
+
+        .input-area input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 24px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .input-area input:focus {
+            border-color: #4a90d9;
+        }
+
+        .input-area button {
+            padding: 12px 24px;
+            background-color: #4a90d9;
+            color: white;
+            border: none;
+            border-radius: 24px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .input-area button:hover {
+            background-color: #357abd;
+        }
+
+        .input-area button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .welcome-message {
+            text-align: center;
+            color: #999;
+            margin-top: 40px;
+            font-size: 14px;
+        }
+
+        .error-message {
+            align-self: center;
+            background-color: #e74c3c;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span>RuleBot Chat</span>
+        <span id="connectionStatus" class="connection-status">Verbunden</span>
+    </div>
+
+    <div id="chatContainer" class="chat-container">
+        <div class="welcome-message">
+            Willkommen! Schicke eine Nachricht an den Bot.<br>
+            Beispiel: "Hello", "How much is a t-shirt?", "I want to order 2 pants"
+        </div>
+    </div>
+
+    <div class="input-area">
+        <input type="text" id="messageInput" placeholder="Schreibe eine Nachricht..." autocomplete="off">
+        <button id="sendButton" onclick="sendMessage()">Senden</button>
+    </div>
+
+    <script>
+        let stompClient = null;
+
+        function connect() {
+            const socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+
+            stompClient.connect({}, function (frame) {
+                document.getElementById('connectionStatus').textContent = 'Verbunden';
+                document.getElementById('connectionStatus').classList.add('connected');
+                document.getElementById('sendButton').disabled = false;
+                console.log('WebSocket verbunden: ' + frame);
+            }, function (error) {
+                document.getElementById('connectionStatus').textContent = 'Fehler';
+                document.getElementById('connectionStatus').classList.remove('connected');
+                console.error('WebSocket Fehler: ' + error);
+                addMessage('Verbindungsfehler. Seite neu laden.', 'error');
+            });
+
+            // Bot-Antworten empfangen
+            stompClient.subscribe('/chat/response', function (response) {
+                const data = JSON.parse(response.body);
+                addMessage(data.response, 'bot', data.intent);
+            });
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            if (!message || !stompClient) {
+                return;
+            }
+
+            // Nutzernachricht anzeigen
+            addMessage(message, 'user');
+
+            // Nachricht an Server senden
+            stompClient.send('/app/chat/send', {}, JSON.stringify({ message: message }));
+
+            input.value = '';
+            input.focus();
+        }
+
+        function addMessage(text, sender, intent) {
+            const container = document.getElementById('chatContainer');
+
+            // Willkommensnachricht entfernen
+            const welcome = container.querySelector('.welcome-message');
+            if (welcome) {
+                welcome.remove();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + sender;
+
+            if (sender === 'error') {
+                messageDiv.className = 'error-message';
+                messageDiv.textContent = text;
+            } else {
+                messageDiv.textContent = text;
+                if (intent) {
+                    const intentDiv = document.createElement('div');
+                    intentDiv.className = 'intent';
+                    intentDiv.textContent = '[' + intent + ']';
+                    messageDiv.appendChild(intentDiv);
+                }
+            }
+
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Enter-Taste zum Senden
+        document.getElementById('messageInput').addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Verbindung beim Laden herstellen
+        connect();
+    </script>
+</body>
+</html>

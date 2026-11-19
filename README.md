@@ -59,8 +59,8 @@ Antwort:
 
 ```json
 {
-  "response": "Hello! How can I help you today?",
-  "intent": "GREETING"
+  "response": "A t-shirt costs 25.00 EUR.",
+  "intent": "ASK_PRICE"
 }
 ```
 
@@ -247,7 +247,7 @@ Response:
 
 ```json
 {
-  "response": "I have received your order for 2 Pants. Shall I complete the order?",
+  "response": "I can help with that! 2 pants costs 55.00 EUR each. Total: 110.00 EUR. Shall I confirm your order?",
   "intent": "ORDER"
 }
 ```
@@ -267,7 +267,7 @@ Response:
   },
   {
     "id": 2,
-    "text": "I have received your order for 2 Pants.",
+    "text": "I can help with that! 2 pants costs 55.00 EUR each.",
     "sender": "bot",
     "intent": "ORDER",
     "timestamp": "2026-11-19T14:00:01"
@@ -291,39 +291,39 @@ Response:
 
 ## Intents
 
-| Intent | Beispiel-Nachrichten | Antwort |
-|--------|---------------------|---------|
-| `GREETING` | "Hello", "Hi", "Good morning" | "Hello! How can I help you today?" |
-| `ASK_PRICE` | "How much is a T-shirt?", "What's the price?" | "A T-shirt costs 25.00 Euro." |
-| `ORDER` | "I want to order 2 pants", "Buy a jacket" | "I have received your order for 2 Pants." |
-| `CONFIRM` | "Yes", "Please", "OK" | "Your order has been placed! Thank you." |
-| `CANCEL` | "No", "Cancel", "Stop" | "Order cancelled. Let me know if you need anything else." |
-| `GOODBYE` | "Bye", "Goodbye", "See you" | "Goodbye! Have a great day!" |
-| `HELP` | "Help", "What can you do?" | Liste der verfügbaren Befehle |
-| `SEARCH` | "Show me blue sneakers", "Find a dress" | "I found Blue Sneakers. Price: 80.00 Euro." |
-| `RETURN` | "I want to return", "Refund" | "I can help with returns. What item do you want to return?" |
-| `SHIPPING` | "How long is shipping?", "Delivery time" | "Shipping takes 3-5 business days." |
+| Intent | Beispiel-Nachrichten | Antwort (Beispiel) |
+|--------|---------------------|-------------------|
+| `GREETING` | "Hello", "Hi", "Good morning" | "Hello! How can I help you today?" (3 Varianten) |
+| `ASK_PRICE` | "How much is a T-shirt?", "What's the price?" | "A t-shirt costs 25.00 EUR." |
+| `ORDER` | "I want to order 2 pants", "Buy a jacket" | "I can help with that! 2 pants costs 55.00 EUR each. Total: 110.00 EUR. Shall I confirm your order?" |
+| `CONFIRM` | "Yes", "Please", "OK" | "Great! Your order has been confirmed. Thank you for shopping with us!" (3 Varianten) |
+| `CANCEL` | "No", "Cancel", "Stop" | "No problem, I've cancelled that. Is there anything else you need?" (3 Varianten) |
+| `GOODBYE` | "Bye", "Goodbye", "See you" | "Goodbye! Have a great day!" (3 Varianten) |
+| `HELP` | "Help", "What can you do?" | Liste der verfügbaren Befehle und Produkte |
+| `SEARCH` | "Show me blue sneakers", "Find a dress" | "I found blue sneakers for 80.00 EUR. Would you like to order it?" |
+| `RETURN` | "I want to return", "Refund" | "You can return any item within 30 days of purchase. Items must be unused and in original packaging." |
+| `SHIPPING` | "How long is shipping?", "Delivery time" | "Standard shipping takes 3-5 business days. Express shipping (1-2 days) is available for an extra 9.99 EUR." |
 
 ## Produktkatalog
 
 | Produkt | Preis |
 |---------|-------|
 | T-Shirt | 25.00 Euro |
-| Pants | 45.00 Euro |
+| Shirt | 40.00 Euro |
+| Pants | 55.00 Euro |
+| Jeans | 60.00 Euro |
+| Jacket | 90.00 Euro |
+| Dress | 70.00 Euro |
+| Skirt | 45.00 Euro |
+| Sweater | 50.00 Euro |
+| Hoodie | 45.00 Euro |
 | Sneakers | 80.00 Euro |
-| Jacket | 120.00 Euro |
-| Dress | 65.00 Euro |
-| Jeans | 55.00 Euro |
-| Hoodie | 50.00 Euro |
-| Shorts | 30.00 Euro |
-| Socks | 10.00 Euro |
+| Boots | 100.00 Euro |
+| Sandals | 35.00 Euro |
 | Hat | 20.00 Euro |
 | Scarf | 15.00 Euro |
-| Gloves | 18.00 Euro |
-| Belt | 22.00 Euro |
-| Shoes | 90.00 Euro |
-| Sweater | 60.00 Euro |
-| Coat | 150.00 Euro |
+| Belt | 25.00 Euro |
+| Bag | 60.00 Euro |
 
 ## Tests
 

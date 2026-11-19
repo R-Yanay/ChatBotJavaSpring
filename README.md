@@ -1,16 +1,14 @@
 # ChatBotJavaSpring — Rule-Based ChatBot
 
-**RuleBot** ist ein **regelbasierter ChatBot** für einen Online-Shop, der auf englische Nachrichten mit Wenn-Dann-Regeln antwortet — **ohne Deep Learning**. Im Gegensatz zu NumberRecognition und WordRecognition (die neuronale Netze verwenden) arbeitet RuleBot mit klar definierten Regeln, die vollständig kontrollierbar und sofort funktionsfähig sind.
+ChatBotJavaSpring ist ein regelbasierter ChatBot fuer einen Online-Shop. Er erkennt die Absicht (Intent) der Nutzernachricht, extrahiert relevante Informationen (Entities) und generiert passende Antworten — basierend auf Regex-Mustern ohne Machine Learning.
 
-## Was ist RuleBot?
-
-RuleBot erkennt die Absicht (Intent) des Nutzers, extrahiert wichtige Informationen (Entities) und generiert passende Antworten — alles über Regex-basierte Mustererkennung.
+## Beispiel
 
 ```
 Nutzer: "How much is a t-shirt?"
   → Intent: ASK_PRICE
   → Entity: product="t-shirt"
-  → Antwort: "A T-shirt costs 25.00 Euro."
+  → Antwort: "A T-shirt costs 25.00 EUR."
 ```
 
 ## Technologien
@@ -18,7 +16,7 @@ Nutzer: "How much is a t-shirt?"
 | Technologie | Zweck |
 |-------------|-------|
 | Spring Boot 3.4.13 | REST API, Webserver |
-| Spring WebSocket | Echtzeit-Chat über STOMP |
+| Spring WebSocket | Echtzeit-Chat ueber STOMP |
 | Spring Data JPA | Chat-Verlauf in H2 In-Memory Database |
 | Spring Security | HTTP Basic Auth, Benutzer-Authentifizierung |
 | Spring Validation | Nachrichten-Validierung |
@@ -27,27 +25,27 @@ Nutzer: "How much is a t-shirt?"
 
 ## Schnellstart
 
-### 1. Projekt starten
+### Projekt starten
 
 ```bash
 cd ChatBotJavaSpring
 mvn spring-boot:run
 ```
 
-### 2. Im Browser öffnen
+### Im Browser oeffnen
 
-Öffne `http://localhost:8083` im Browser.
+Oeffne `http://localhost:8083` im Browser.
 
-### 3. Anmelden
+### Anmelden
 
 | Feld | Wert |
 |------|------|
 | Benutzername | `user` |
 | Passwort | `password` |
 
-### 4. Chat starten
+### Chat starten
 
-Schicke eine Nachricht über das Chat-Interface oder die REST-API:
+Sende eine Nachricht ueber das Chat-Interface oder die REST-API:
 
 ```bash
 curl -X POST http://user:password@localhost:8083/api/chat \
@@ -59,22 +57,14 @@ Antwort:
 
 ```json
 {
-  "response": "A t-shirt costs 25.00 EUR.",
-  "intent": "ASK_PRICE"
+  "response": "Hello! How can I help you today?",
+  "intent": "GREETING"
 }
 ```
 
 ## Architektur
 
-### CRNN vs. Regelbasiert
-
-| Projekt | AI-Typ | Spring Boot Features |
-|---------|--------|---------------------|
-| NumberRecognition | CNN (Deep Learning) | REST API |
-| WordRecognition | CRNN (Deep Learning) | REST API |
-| **ChatBotJavaSpring** | **Regelbasiert (kein ML)** | **REST + WebSocket + JPA + Security + Session** |
-
-### Datenfluss (mit Gedaechtnis)
+### Datenfluss
 
 ```
 Nutzer → WebSocket/REST → ChatController → SessionManager → ChatService
@@ -82,16 +72,16 @@ Nutzer → WebSocket/REST → ChatController → SessionManager → ChatService
   → ResponseGenerator (mit Workflow) → Session aktualisieren → Antwort
 ```
 
-### Gedaechtnis-System
+### Session-basiertes Gedächtnis
 
-Der ChatBot unterstuetzt **Session-basiertes Gedaechtnis** — er erinnert sich an vorherige Nachrichten, Pronomen und Follow-up-Fragen.
+Der ChatBot unterstuetzt Session-basiertes Gedächtnis: Er speichert die letzte Nachricht, den letzten Intent und die letzten Entities. Damit koennen Pronomen ("it", "that") und Follow-up-Fragen ("what about pants?") korrekt verarbeitet werden.
 
 | Feature | Beispiel | Antwort |
-|---------|----------|--------|
-| **Pronomen** | "How much is a shirt?" → "it" | "A Shirt costs 40.00 EUR." |
-| **Follow-up** | "How much is a shirt?" → "what about pants?" | "Pants cost 55.00 EUR." |
-| **Bestell-Workflow** | "I want to order" → Bot fragt nach Produkt → "a shirt" → Bot fragt Bestaetigung → "yes" | Mehrstufiger Dialog |
-| **Session-Timeout** | 30 Minuten Inaktivitaet | Session wird automatisch geloescht |
+|---------|----------|---------|
+| Pronomen | "How much is a shirt?" → "it" | "A Shirt costs 40.00 EUR." |
+| Follow-up | "How much is a shirt?" → "what about pants?" | "Pants cost 55.00 EUR." |
+| Bestell-Workflow | "I want to order" → Produkt → Bestaetigung → Bestellt | Mehrstufiger Dialog |
+| Session-Timeout | 30 Minuten Inaktivitaet | Session wird automatisch geloescht |
 
 ### ChatSession
 
@@ -289,7 +279,7 @@ classDiagram
 |---------|----------|-------------|------|
 | `POST` | `/api/chat` | Nachricht senden, Antwort erhalten (mit Session) | Ja |
 | `GET` | `/api/chat/history?limit=50` | Chat-Verlauf laden | Ja |
-| `DELETE` | `/api/chat/history` | Chat-Verlauf löschen | Ja |
+| `DELETE` | `/api/chat/history` | Chat-Verlauf loeschen | Ja |
 
 **POST /api/chat**
 
@@ -348,7 +338,7 @@ Response:
 
 | Endpoint | Auth |
 |----------|------|
-| `/index.html` | Nein — Login-Screen ist frei zugänglich |
+| `/index.html` | Nein — Login-Screen ist frei zugreifbar |
 
 ## Intents
 
@@ -356,11 +346,11 @@ Response:
 |--------|---------------------|-------------------|
 | `GREETING` | "Hello", "Hi", "Good morning" | "Hello! How can I help you today?" (3 Varianten) |
 | `ASK_PRICE` | "How much is a T-shirt?", "What do you sell?", "your inventory?" | "A T-shirt costs 25.00 EUR." / Produktkatalog |
-| `ORDER` | "I want to order 2 pants", "Buy a jacket" | Mehrstufiger Workflow: Produkt → Bestätigung → Bestellt |
+| `ORDER` | "I want to order 2 pants", "Buy a jacket" | Mehrstufiger Workflow: Produkt → Bestaetigung → Bestellt |
 | `CONFIRM` | "Yes", "Please", "OK" | "Great! Your order has been confirmed. Thank you for shopping with us!" (3 Varianten) |
 | `CANCEL` | "No", "Cancel", "Stop" | "No problem, I've cancelled that. Is there anything else you need?" (3 Varianten) |
 | `GOODBYE` | "Bye", "Goodbye", "See you" | "Goodbye! Have a great day!" (3 Varianten) |
-| `HELP` | "Help", "What can you do?", "What are your functions?" | Liste der verfügbaren Befehle und Produkte |
+| `HELP` | "Help", "What can you do?", "What are your functions?" | Liste der verfuegbaren Befehle und Produkte |
 | `SEARCH` | "Show me blue sneakers", "Find a dress" | "I found blue sneakers for 80.00 EUR. Would you like to order it?" |
 | `RETURN` | "I want to return", "Refund" | "You can return any item within 30 days of purchase. Items must be unused and in original packaging." |
 | `SHIPPING` | "How long is shipping?", "Delivery time" | "Standard shipping takes 3-5 business days. Express shipping (1-2 days) is available for an extra 9.99 EUR." |
@@ -370,11 +360,11 @@ Response:
 Dank des Gedaechtnis-Systems versteht der Bot auch Follow-up-Fragen:
 
 | Nachricht | Kontext | Intent | Antwort |
-|-----------|---------|--------|--------|
+|-----------|---------|--------|---------|
 | "what about pants?" | Vorher: ASK_PRICE | ASK_PRICE | "Pants cost 55.00 EUR." |
 | "it" | Vorher: product=shirt | ASK_PRICE | "A Shirt costs 40.00 EUR." |
 | "how much?" | Vorher: ASK_PRICE | ASK_PRICE | Antwort basierend auf letztem Produkt |
-| "tell me about jeans" | Kein Kontext nötig | ASK_PRICE | "Jeans cost 60.00 EUR." |
+| "tell me about jeans" | Kein Kontext noetig | ASK_PRICE | "Jeans cost 60.00 EUR." |
 
 ## Produktkatalog
 
@@ -463,12 +453,12 @@ ChatBotJavaSpring/
 │       ├── EntityExtractorTest.java             # 15 Tests
 │       ├── ResponseGeneratorTest.java           # 13 Tests
 │       └── service/
-│           └── ChatServiceTest.java             # 15 Tests
+│           └── ChatService.java                 # 15 Tests
 ```
 
-## Vergleich zu deinen Projekten
+## Vergleich zu anderen Projekten
 
-| Projekt | AI-Typ | Spring Boot Features | Tests |
+| Projekt | Ansatz | Spring Boot Features | Tests |
 |---------|--------|---------------------|-------|
 | NumberRecognition | CNN (Deep Learning) | REST API | 37 JUnit-Tests |
 | WordRecognition | CRNN (Deep Learning) | REST API | 33 JUnit-Tests |
@@ -476,69 +466,56 @@ ChatBotJavaSpring/
 
 ## Grenzen des regelbasierten Ansatzes
 
-Dieser ChatBot verwendet **Regex-basierte Intent-Erkennung** — ein einfacher, transparenter Ansatz, der schnell funktionsfaehig ist. Er hat jedoch klare Grenzen:
+Dieser ChatBot verwendet Regex-basierte Intent-Erkennung. Der Ansatz ist transparent und schnell implementierbar, hat jedoch folgende Grenzen:
 
-| Grenze | Beispiel | Warum es nicht funktioniert |
-|--------|----------|----------------------------|
-| **Natuerliche Sprache** | "I'm looking for something affordable for summer" | Kein Keyword wie "how much" oder "price" enthalten |
-| **Grammatikfehler** | "How much cost the shrit?" | "shrit" passt nicht im EntityExtractor, "how much cost" ist ungewoehnlige Wortreihenfolge |
-| **Offene Fragen** | "What's the difference between a shirt and a t-shirt?" | Kein passender Intent, Bot antwortet mit Fallback |
-| **Mehrsprachigkeit** | "Wie viel kostet ein Shirt?" | Regex-Regeln sind nur auf Englisch |
-| **Kontext-Verlust** | "I want to order" → (5 Min Pause) → "a shirt" | Session-Timeout nach 30 Min, aber Workflow-Status geht verloren |
-| **Skalierung** | 100+ Intents mit je 20 Keywords | Regex-Regeln werden unuebersichtlich und kollidieren |
+| Grenze | Beispiel |
+|--------|----------|
+| Natuerliche Sprache | "I'm looking for something affordable for summer" wird nicht erkannt |
+| Grammatikfehler | "How much cost the shrit?" — Tippfehler fuehren zu falscher Erkennung |
+| Offene Fragen | "What's the difference between a shirt and a t-shirt?" — kein passender Intent |
+| Mehrsprachigkeit | Regex-Regeln sind nur auf Englisch definiert |
+| Skalierung | Ab 100+ Intents werden Regex-Regeln unuebersichtlich und kollidieren |
 
-### Was funktioniert trotzdem gut?
+Trotzdem funktioniert der Bot fuer folgende Szenarien zuverlaessig:
 
 | Szenario | Erkennungsrate |
 |----------|---------------|
-| **Feste Fragen** (FAQ) | ~95% — "How much is a shirt?" wird immer erkannt |
-| **Bestell-Workflow** | ~90% — "I want to order 2 pants" funktioniert zuverlaessig |
-| **Follow-up-Fragen** | ~80% — "what about jeans?" wird mit letztem Intent kombiniert |
-| **Pronomen** | ~75% — "it" referenziert das letzte Produkt |
-
-### Vergleich: Regelbasiert vs. NLU vs. LLM
-
-| Feature | Regelbasiert (dieser Bot) | NLU (Rasa, Dialogflow) | LLM (ChatGPT API) |
-|---------|--------------------------|------------------------|-------------------|
-| **Intent-Erkennung** | Regex-Matching | ML-Modell mit Trainingsbeispielen | Sprachverstaendnis |
-| **"How much is a shirt?"** | ✅ "how much" gefunden | ✅ Aehnlich zu Beispielen | ✅ Versteht die Frage |
-| **"Is there anything affordable?"** | ❌ Kein Keyword | ✅ "affordable" ≈ "cheap" | ✅ Versteht "affordable" |
-| **"I'm looking for summer stuff"** | ❌ Komplett falsch | ⚠️ Teilweise | ✅ Vollstaendig |
-| **Skalierung** | 10–50 Regeln OK | 50–500 Intents OK | Unbegrenzt |
-| **Kosten** | 0 € | 0 € (Open Source) | ~0.01 € pro Gespraech |
-| **Setup** | Einfach | Mittel | Einfach (API-Schluessel) |
-
-### Weg zu ChatBot V2
-
-Um diese Grenzen zu ueberwinden, koennte ein ChatBot V2 folgende Technologien verwenden:
-
-1. **NLU-Plattform** (Rasa, Dialogflow): Statt Regex-Regeln werden Trainingsbeispiele verwendet. Das Modell lernt, verschiedene Formulierungen fuer denselben Intent zu erkennen.
-2. **LLM-Integration** (ChatGPT API, Open-Source LLMs): Ein System-Prompt ersetzt manuelle Regeln. Der Bot versteht jede Formulierung und antwortet in natuerlicher Sprache.
-3. **Hybrid-Ansatz**: LLM fuer offene Konversation + feste Intents fuer kritische Aktionen (Bestellung, Zahlung) + menschliche Eskalation bei Unsicherheit.
+| Feste Fragen (FAQ) | ~95% |
+| Bestell-Workflow | ~90% |
+| Follow-up-Fragen | ~80% |
+| Pronomen | ~75% |
 
 ## Lessons Learned
 
-1. **Intent-Reihenfolge ist kritisch**: CANCEL und RETURN müssen vor ORDER erkannt werden, da "cancel my order" und "I want to return" auch ORDER-Keywords enthalten. HELP muss vor ASK_PRICE, da "tell me about" auch "about" enthält.
-2. **Spring Security CSRF**: CSRF muss für REST-API deaktiviert werden, sonst blockiert es alle POST-Anfragen mit 403.
-3. **WebSocket Auth via REST-API**: SockJS leitet benutzerdefinierte STOMP-Header nicht zuverlässig weiter. Lösung: Credentials zuerst über REST-API (HTTP Basic Auth) validieren, dann WebSocket ohne Auth-Header verbinden.
+1. **Intent-Reihenfolge ist kritisch**: CANCEL und RETURN muessen vor ORDER erkannt werden, da "cancel my order" und "I want to return" auch ORDER-Keywords enthalten. HELP muss vor ASK_PRICE, da "tell me about" auch "about" enthaelt.
+2. **Spring Security CSRF**: CSRF muss fuer REST-API deaktiviert werden, sonst blockiert es alle POST-Anfragen mit 403.
+3. **WebSocket Auth via REST-API**: SockJS leitet benutzerdefinierte STOMP-Header nicht zuverlaessig weiter. Loesung: Credentials zuerst ueber REST-API (HTTP Basic Auth) validieren, dann WebSocket ohne Auth-Header verbinden.
 4. **StompJs v7 mit SockJS**: Native WebSocket (`ws://`) funktioniert nicht mit Spring `withSockJS()`. Stattdessen `webSocketFactory` mit `new SockJS('/ws')` verwenden.
-5. **H2 In-Memory Database**: Keine Installation nötig, aber Daten gehen beim Neustart verloren — perfekt für Demos.
-6. **SockJS Fallback**: WebSocket-Verbindung funktioniert auch, wenn der Browser WebSocket nicht direkt unterstützt.
-7. **Regelbasiert vs. Deep Learning**: Regelbasierte KI ist sofort funktionsfähig, aber skaliert schlecht ab 100+ Regeln.
-8. **Entity-Extraktion**: Einfache String-Matching reicht für kleine Kataloge, aber NLP wäre nötig für echte Anwendungen.
+5. **H2 In-Memory Database**: Keine Installation noetig, aber Daten gehen beim Neustart verloren — perfekt fuer Demos.
+6. **SockJS Fallback**: WebSocket-Verbindung funktioniert auch, wenn der Browser WebSocket nicht direkt unterstuetzt.
+7. **Regelbasiert vs. Deep Learning**: Regelbasierte KI ist sofort funktionsfaehig, aber skaliert schlecht ab 100+ Regeln.
+8. **Entity-Extraktion**: Einfache String-Matching reicht fuer kleine Kataloge, aber NLP waere noetig fuer echte Anwendungen.
 9. **Chat-Verlauf**: JPA mit `@OrderBy` und `setMaxResults` ist einfach, aber `@Param` in JPQL ohne `setMaxResults` funktioniert nicht.
-10. **Frontend Login**: WebSocket-Auth erfordert, dass der Login-Screen statisch (ohne Auth) zugänglich ist.
+10. **Frontend Login**: WebSocket-Auth erfordert, dass der Login-Screen statisch (ohne Auth) zugreifbar ist.
 11. **Java 25 + Mockito**: Mockito Inline-Mocking funktioniert nicht mit Java 25 — echte Objekte statt Mocks verwenden.
-12. **Session-basiertes Gedächtnis**: ConcurrentHashMap für In-Memory Sessions ist einfach, aber Sessions gehen beim Neustart verloren. Für Produktion: Redis oder Database.
-13. **Follow-up-Fragen**: "what about X?" und "and X?" müssen vom IntentDetector erkannt und mit dem letzten Intent kombiniert werden. Pronomen ("it", "that") referenzieren die letzten Entities.
-14. **Bestell-Workflow**: Mehrstufiger Dialog (Produkt → Bestätigung → Bestellt) erfordert OrderStatus-Tracking in der Session. Bei Themenwechsel muss der Workflow zurückgesetzt werden.
-15. **GlobalExceptionHandler**: Ohne `@RestControllerAdvice` werden Exceptions als 500 ohne Details zurückgegeben. `MethodArgumentNotValidException` muss separat als 400 behandelt werden.
+12. **Session-basiertes Gedaechtnis**: ConcurrentHashMap fuer In-Memory Sessions ist einfach, aber Sessions gehen beim Neustart verloren. Fuer Produktion: Redis oder Database.
+13. **Follow-up-Fragen**: "what about X?" und "and X?" muessen vom IntentDetector erkannt und mit dem letzten Intent kombiniert werden. Pronomen ("it", "that") referenzieren die letzten Entities.
+14. **Bestell-Workflow**: Mehrstufiger Dialog (Produkt → Bestaetigung → Bestellt) erfordert OrderStatus-Tracking in der Session. Bei Themenwechsel muss der Workflow zurueckgesetzt werden.
+15. **GlobalExceptionHandler**: Ohne `@RestControllerAdvice` werden Exceptions als 500 ohne Details zurueckgegeben. `MethodArgumentNotValidException` muss separat als 400 behandelt werden.
 16. **Intent-Erweiterung**: Neue Keywords (sell, offer, inventory, functions, capabilities) erweitern die Erkennung. Grammatikfehler ("what do you're stuff cost?") werden durch "cost" im Regex erkannt.
 17. **Wortgrenzen bei Entity-Extraktion**: `contains()` fuehrt zu False-Positives ("hat" in "what"). Loesung: `\b` Wortgrenzen in Regex verwenden.
-18. **Regelbasierte Grenzen**: Der Bot erkennt nur vordefinierte Keywords. Natuerliche Sprache, Grammatikfehler und offene Fragen werden nicht verstanden — ein ChatBot V2 mit NLU/LLM waere noetig.
+18. **Regelbasierte Grenzen**: Der Bot erkennt nur vordefinierte Keywords. Natuerliche Sprache, Grammatikfehler und offene Fragen werden nicht verstanden.
 
 ## Ziel
 
-Nach dem Projekt kannst du sagen:
+Dieses Projekt demonstriert die Implementierung eines regelbasierten ChatBots mit Spring Boot. Es deckt folgende Technologien und Konzepte ab:
 
-> "Ich habe einen regelbasierten ChatBot mit Spring Boot gebaut, der Echtzeit-Chat über WebSocket, Chat-Verlauf mit JPA, Benutzer-Authentifizierung mit Spring Security und Session-basiertes Gedächtnis unterstützt. Der Bot versteht Pronomen, Follow-up-Fragen und führt mehrstufige Bestell-Workflows durch. Das Projekt hat 119 JUnit-Tests und deckt REST API, WebSocket, JPA, Security und Session-Management ab."
+- **REST API** mit Spring Boot fuer synchronen Chat
+- **WebSocket** mit STOMP und SockJS fuer Echtzeit-Kommunikation
+- **Spring Data JPA** mit H2 In-Memory Database fuer Chat-Verlauf
+- **Spring Security** mit HTTP Basic Auth fuer Benutzer-Authentifizierung
+- **Session-Management** mit ConcurrentHashMap fuer Gedaechtnis-fuehige Konversationen
+- **Intent-Erkennung** mit Regex-Mustern und Kontext-Awareness
+- **Entity-Extraktion** mit Wortgrenzen-Regex fuer False-Positive-Vermeidung
+- **Bestell-Workflow** mit mehrstufigem Dialog und OrderStatus-Tracking
+- **119 JUnit-Tests** fuer Intent-Detektion, Entity-Extraktion, Response-Generierung, REST-API, Security und Session-Management

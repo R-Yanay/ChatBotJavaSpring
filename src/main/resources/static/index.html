@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RuleBot - Chat</title>
-    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -663,35 +662,46 @@
             });
         }
 
-        // WebSocket verbinden (nach erfolgreichem Login)
+        // WebSocket verbinden (nach erfolgreichem Login) - StompJs v7
         function connectWebSocket() {
             console.log('Verbinde WebSocket...');
-            const socket = new SockJS('/ws');
-            stompClient = Stomp.over(socket);
 
-            stompClient.connect({}, function (frame) {
-                console.log('STOMP verbunden: ' + frame);
-                document.getElementById('connectionStatus').textContent = 'Verbunden';
-                document.getElementById('connectionStatus').classList.add('connected');
-                document.getElementById('sendButton').disabled = false;
-                document.getElementById('messageInput').focus();
-                addMessage('Chat verbunden. Schicke eine Nachricht!', 'bot');
-            }, function (error) {
-                console.error('STOMP Connect Fehler: ' + error);
-                document.getElementById('connectionStatus').textContent = 'Fehler';
-                addMessage('WebSocket-Verbindung fehlgeschlagen. Bitte Seite neu laden.', 'error');
-            });
+            stompClient = new StompJs.Client({
+                brokerURL: 'ws://localhost:8083/ws',
+                debug: function (str) { console.log('STOMP:', str); },
+                reconnectDelay: 5000,
+                onConnect: function (frame) {
+                    console.log('STOMP verbunden:', frame);
+                    document.getElementById('connectionStatus').textContent = 'Verbunden';
+                    document.getElementById('connectionStatus').classList.add('connected');
+                    document.getElementById('sendButton').disabled = false;
+                    document.getElementById('messageInput').focus();
+                    addMessage('Chat verbunden. Schicke eine Nachricht!', 'bot');
 
-            // Bot-Antworten empfangen
-            stompClient.subscribe('/chat/response', function (response) {
-                try {
-                    const data = JSON.parse(response.body);
-                    addMessage(data.response, 'bot', data.intent);
-                } catch (e) {
-                    console.error('Fehler beim Parsen der Antwort:', e);
-                    addMessage('Unerwartete Antwort vom Server.', 'error');
+                    // Bot-Antworten empfangen
+                    stompClient.subscribe('/chat/response', function (message) {
+                        try {
+                            const data = JSON.parse(message.body);
+                            console.log('Bot-Antwort:', data);
+                            addMessage(data.response, 'bot', data.intent);
+                        } catch (e) {
+                            console.error('Fehler beim Parsen:', e);
+                            addMessage('Unerwartete Antwort vom Server.', 'error');
+                        }
+                    });
+                },
+                onStompError: function (frame) {
+                    console.error('STOMP Fehler:', frame.headers['message']);
+                    addMessage('WebSocket-Verbindung fehlgeschlagen.', 'error');
+                },
+                onWebSocketError: function (event) {
+                    console.error('WebSocket Fehler:', event);
+                    document.getElementById('connectionStatus').textContent = 'Fehler';
+                    addMessage('Verbindungsfehler. Ist der Server gestartet?', 'error');
                 }
             });
+
+            stompClient.activate();
         }
 
         function sendMessage() {
@@ -703,8 +713,8 @@
                 return;
             }
 
-            if (!stompClient) {
-                console.log('stompClient nicht initialisiert');
+            if (!stompClient || !stompClient.connected) {
+                console.log('stompClient nicht verbunden, connected=', stompClient ? stompClient.connected : 'no client');
                 addMessage('Nicht verbunden. Bitte Seite neu laden.', 'error');
                 return;
             }
@@ -715,7 +725,10 @@
             addMessage(message, 'user');
 
             // Nachricht an Server senden
-            stompClient.send('/app/chat/send', {}, JSON.stringify({ message: message }));
+            stompClient.publish({
+                destination: '/app/chat/send',
+                body: JSON.stringify({ message: message })
+            });
 
             input.value = '';
             input.focus();

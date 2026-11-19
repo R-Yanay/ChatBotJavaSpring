@@ -1,6 +1,7 @@
 package com.chatbot.service;
 
 import com.chatbot.config.BotConfig;
+import com.chatbot.model.ChatSession;
 import com.chatbot.model.Intent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +13,8 @@ import java.util.Random;
 
 /**
  * Generiert die Antwort des ChatBots basierend auf erkanntem Intent und Entities.
- * Jeder Intent hat mehrere vordefinierte Antworten — eine wird zufällig ausgewählt.
+ * Jeder Intent hat mehrere vordefinierte Antworten — eine wird zufaellig ausgewaehlt.
+ * Unterstuetzt ChatSession fuer Bestell-Workflow und Kontext-bewusste Antworten.
  */
 @Service
 public class ResponseGenerator {
@@ -28,14 +30,36 @@ public class ResponseGenerator {
      * @return Die Antwort des Bots als Text
      */
     public String generate(Intent intent, Map<String, String> entities) {
+        return generate(intent, entities, null);
+    }
+
+    /**
+     * Generiert eine Antwort basierend auf Intent, Entities und ChatSession-Kontext.
+     *
+     * @param intent    Der erkannte Intent
+     * @param entities  Extrahierte Entities (Produkt, Farbe, Menge)
+     * @param session   Die ChatSession fuer Kontext (oder null)
+     * @return Die Antwort des Bots als Text
+     */
+    public String generate(Intent intent, Map<String, String> entities, ChatSession session) {
+        // Bestell-Workflow: wenn Bot nach Produkt fragt und Nutzer antwortet
+        if (session != null && session.getOrderStatus() == ChatSession.OrderStatus.ASKING_PRODUCT) {
+            return handleOrderWorkflow(session, entities);
+        }
+
+        // Bestell-Workflow: wenn Bot nach Bestaetigung fragt
+        if (session != null && session.getOrderStatus() == ChatSession.OrderStatus.ASKING_CONFIRMATION) {
+            return handleConfirmationWorkflow(session, intent);
+        }
+
         String response = switch (intent) {
             case GREETING -> randomChoice(
                     "Hello! How can I help you today?",
                     "Hi there! What can I do for you?",
                     "Hey! Welcome to our shop. How can I assist you?"
             );
-            case ASK_PRICE -> generatePriceResponse(entities);
-            case ORDER -> generateOrderResponse(entities);
+            case ASK_PRICE -> generatePriceResponse(entities, session);
+            case ORDER -> generateOrderResponse(entities, session);
             case CONFIRM -> randomChoice(
                     "Great! Your order has been confirmed. Thank you for shopping with us!",
                     "Perfect! I've processed your order. You'll receive a confirmation email shortly.",
@@ -67,10 +91,75 @@ public class ResponseGenerator {
     }
 
     /**
+     * Handhabt den Bestell-Workflow: Bot fragt nach Produkt.
+     */
+    private String handleOrderWorkflow(ChatSession session, Map<String, String> entities) {
+        String product = entities.get("product");
+        if (product != null && BotConfig.hasProduct(product)) {
+            session.setOrderProduct(product);
+            String color = entities.get("color");
+            if (color != null) {
+                session.setOrderColor(color);
+            }
+            String quantity = entities.get("quantity");
+            if (quantity != null) {
+                session.setOrderQuantity(Integer.parseInt(quantity));
+            }
+            session.setOrderStatus(ChatSession.OrderStatus.ASKING_CONFIRMATION);
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("You want to order ");
+            if (session.getOrderQuantity() != null) {
+                sb.append(session.getOrderQuantity()).append(" ");
+            }
+            if (session.getOrderColor() != null) {
+                sb.append(session.getOrderColor()).append(" ");
+            }
+            sb.append(session.getOrderProduct());
+            double price = BotConfig.getPrice(session.getOrderProduct());
+            int qty = session.getOrderQuantity() != null ? session.getOrderQuantity() : 1;
+            sb.append(String.format(". Total: %.2f EUR. ", price * qty));
+            sb.append("Shall I confirm your order?");
+            return sb.toString();
+        }
+        return "I'm not sure which product you mean. We have: " + String.join(", ", BotConfig.getProducts());
+    }
+
+    /**
+     * Handhabt den Bestaetigungs-Workflow: Bot fragt nach Bestaetigung.
+     */
+    private String handleConfirmationWorkflow(ChatSession session, Intent intent) {
+        if (intent == Intent.CONFIRM) {
+            session.setOrderStatus(ChatSession.OrderStatus.CONFIRMED);
+            StringBuilder sb = new StringBuilder();
+            sb.append("Great! Your order for ");
+            if (session.getOrderQuantity() != null) {
+                sb.append(session.getOrderQuantity()).append(" ");
+            }
+            if (session.getOrderColor() != null) {
+                sb.append(session.getOrderColor()).append(" ");
+            }
+            sb.append(session.getOrderProduct()).append(" has been confirmed!");
+            sb.append(" Thank you for shopping with us.");
+            session.resetOrder();
+            return sb.toString();
+        } else if (intent == Intent.CANCEL) {
+            session.resetOrder();
+            return "No problem, I've cancelled that. Is there anything else you need?";
+        }
+        // Kein CONFIRM/CANCEL -> frage weiter
+        return "Please say 'yes' to confirm or 'no' to cancel your order.";
+    }
+
+    /**
      * Generiert eine Antwort auf Preisfragen.
      */
-    private String generatePriceResponse(Map<String, String> entities) {
+    private String generatePriceResponse(Map<String, String> entities, ChatSession session) {
         String product = entities.get("product");
+        // Falls kein Produkt, aber Session hat letztes Produkt (Pronomen/Follow-up)
+        if (product == null && session != null) {
+            product = session.getLastEntities().get("product");
+        }
         if (product != null && BotConfig.hasProduct(product)) {
             double price = BotConfig.getPrice(product);
             return String.format("A %s costs %.2f EUR.", product, price);
@@ -81,7 +170,7 @@ public class ResponseGenerator {
     /**
      * Generiert eine Antwort auf Bestellungsanfragen.
      */
-    private String generateOrderResponse(Map<String, String> entities) {
+    private String generateOrderResponse(Map<String, String> entities, ChatSession session) {
         String product = entities.get("product");
         String quantity = entities.get("quantity");
         String color = entities.get("color");
@@ -107,7 +196,14 @@ public class ResponseGenerator {
             return sb.toString();
         }
 
-        return "I'm not sure which product you want to order. We have: " + String.join(", ", BotConfig.getProducts());
+        // Kein Produkt gefunden -> Bestell-Workflow starten
+        if (session != null) {
+            session.setOrderProduct(null);
+            session.setOrderQuantity(null);
+            session.setOrderColor(null);
+            session.setOrderStatus(ChatSession.OrderStatus.ASKING_PRODUCT);
+        }
+        return "What product would you like to order? We have: " + String.join(", ", BotConfig.getProducts());
     }
 
     /**

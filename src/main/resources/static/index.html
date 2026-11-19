@@ -728,10 +728,10 @@
             // Nutzernachricht anzeigen
             addMessage(message, 'user');
 
-            // Nachricht an Server senden
+            // Nachricht an Server senden (mit userId fuer Session-Management)
             stompClient.publish({
                 destination: '/app/chat/send',
-                body: JSON.stringify({ message: message })
+                body: JSON.stringify({ message: message, userId: authenticatedUser })
             });
 
             input.value = '';

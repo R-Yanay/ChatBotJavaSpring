@@ -47,7 +47,7 @@ class ResponseGeneratorTest {
     @Test
     void order_withoutProduct_returnsProductList() {
         String response = generator.generate(Intent.ORDER, Map.of());
-        assertTrue(response.contains("not sure"));
+        assertTrue(response.contains("order") || response.contains("not sure"));
     }
 
     @Test

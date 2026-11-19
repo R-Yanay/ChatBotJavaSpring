@@ -1,6 +1,7 @@
 package com.chatbot.service;
 
 import com.chatbot.config.BotConfig;
+import com.chatbot.model.ChatSession;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -11,6 +12,7 @@ import java.util.regex.Pattern;
 /**
  * Extrahiert wichtige Informationen (Entities) aus einer Nachricht.
  * Erkennt Produktnamen, Farben und Mengen.
+ * Unterstuetzt Pronomen-Aufloesung via ChatSession.
  */
 @Service
 public class EntityExtractor {
@@ -22,10 +24,27 @@ public class EntityExtractor {
      * @return Map mit Entity-Namen und Werten (z.B. "product" → "t-shirt")
      */
     public Map<String, String> extract(String message) {
+        return extract(message, null);
+    }
+
+    /**
+     * Extrahiert alle Entities aus einer Nachricht mit Kontext aus der ChatSession.
+     * Loest Pronomen ("it", "that") auf die letzten Entities auf.
+     *
+     * @param message Die Nutzereingabe
+     * @param session Die ChatSession mit Kontext (oder null)
+     * @return Map mit Entity-Namen und Werten
+     */
+    public Map<String, String> extract(String message, ChatSession session) {
         Map<String, String> entities = new HashMap<>();
 
         if (message == null || message.trim().isEmpty()) {
             return entities;
+        }
+
+        // Pronomen: "it", "that", "them" -> letzte Entities verwenden
+        if (isPronounOnly(message) && session != null) {
+            return new HashMap<>(session.getLastEntities());
         }
 
         String lower = message.toLowerCase();
@@ -49,6 +68,15 @@ public class EntityExtractor {
         }
 
         return entities;
+    }
+
+    /**
+     * Prueft, ob die Nachricht nur ein Pronomen ist.
+     */
+    private boolean isPronounOnly(String message) {
+        String lower = message.toLowerCase().trim();
+        return lower.equals("it") || lower.equals("that") || lower.equals("them")
+                || lower.equals("this") || lower.equals("those");
     }
 
     /**

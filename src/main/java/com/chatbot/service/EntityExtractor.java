@@ -81,7 +81,9 @@ public class EntityExtractor {
 
     /**
      * Erkennt den Produktnamen in der Nachricht.
-     * Sucht nach den längsten Treffer, um "t-shirt" vor "shirt" zu bevorzugen.
+     * Sucht nach ganzen Wörtern (nicht Teilstrings), um False-Positives zu vermeiden.
+     * Beispiel: "hat" passt NICHT in "what hat" — nur als eigenständiges Wort.
+     * Bevorzugt längste Übereinstimmung, um "t-shirt" vor "shirt" zu erkennen.
      */
     private String extractProduct(String message) {
         String[] products = BotConfig.getProducts();
@@ -89,7 +91,10 @@ public class EntityExtractor {
         int bestLength = 0;
 
         for (String product : products) {
-            if (message.contains(product) && product.length() > bestLength) {
+            // Wortgrenzen verwenden: \bproduct\b statt contains()
+            // So wird "hat" nicht in "what" gefunden
+            Pattern p = Pattern.compile("\\b" + Pattern.quote(product) + "\\b", Pattern.CASE_INSENSITIVE);
+            if (p.matcher(message).find() && product.length() > bestLength) {
                 bestMatch = product;
                 bestLength = product.length();
             }
@@ -100,10 +105,12 @@ public class EntityExtractor {
 
     /**
      * Erkennt die Farbe in der Nachricht.
+     * Verwendet Wortgrenzen, um False-Positives zu vermeiden.
      */
     private String extractColor(String message) {
         for (String color : BotConfig.COLORS) {
-            if (message.contains(color)) {
+            Pattern p = Pattern.compile("\\b" + Pattern.quote(color) + "\\b", Pattern.CASE_INSENSITIVE);
+            if (p.matcher(message).find()) {
                 return color;
             }
         }

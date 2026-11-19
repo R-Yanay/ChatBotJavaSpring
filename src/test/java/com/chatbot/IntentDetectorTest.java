@@ -208,4 +208,24 @@ class IntentDetectorTest {
     void followUp_tellMeAbout() {
         assertEquals(Intent.ASK_PRICE, detector.detect("tell me about pants"));
     }
+
+    @Test
+    void askPrice_products() {
+        assertEquals(Intent.ASK_PRICE, detector.detect("what products do you have?"));
+    }
+
+    @Test
+    void askPrice_whatElse() {
+        assertEquals(Intent.ASK_PRICE, detector.detect("what else do you have?"));
+    }
+
+    @Test
+    void askPrice_whatIsEuro() {
+        assertEquals(Intent.ASK_PRICE, detector.detect("what is 20 euro?"));
+    }
+
+    @Test
+    void order_whatCanIOrder() {
+        assertEquals(Intent.ORDER, detector.detect("what can i order?"));
+    }
 }

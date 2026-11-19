@@ -36,9 +36,9 @@ public class IntentDetector {
                     "(?i)\\b(help|what can you do|how does this work|support|info|information|functions|capabilities|features|abilities)\\b"),
 
             // ASK_PRICE — spezifisch vor ORDER
-            // Erkennt auch: "what are the prices?", "what do you sell?", "your inventory?", "what about X?"
+            // Erkennt auch: "what products do you have?", "what else do you have?", "what is 20 euro?"
             new IntentRule(Intent.ASK_PRICE,
-                    "(?i)\\b(how much|cost|price|pricetag|expensive|cheap|affordable|budget|sell|offer|inventory|catalogue|catalog|about)\\b"),
+                    "(?i)\\b(how much|cost|price|pricetag|expensive|cheap|affordable|budget|sell|offer|inventory|catalogue|catalog|about|products|what else|euro|dollar|pound|yen)\\b"),
 
             // CANCEL — muss vor ORDER, da "cancel my order" das Wort "order" enthaelt
             new IntentRule(Intent.CANCEL,

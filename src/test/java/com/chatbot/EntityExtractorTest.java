@@ -109,4 +109,25 @@ class EntityExtractorTest {
         String[] products = BotConfig.getProducts();
         assertTrue(products.length > 0);
     }
+
+    @Test
+    void extractProduct_noFalsePositive_inWhat() {
+        // "hat" soll NICHT in "what" gefunden werden
+        Map<String, String> entities = extractor.extract("what can i order?");
+        assertNull(entities.get("product"));
+    }
+
+    @Test
+    void extractProduct_noFalsePositive_inThat() {
+        // "hat" soll NICHT in "that" gefunden werden
+        Map<String, String> entities = extractor.extract("that is a good shirt");
+        assertEquals("shirt", entities.get("product"));
+    }
+
+    @Test
+    void extractProduct_wholeWordOnly() {
+        // "hat" als eigenstaendiges Wort soll erkannt werden
+        Map<String, String> entities = extractor.extract("I want a hat");
+        assertEquals("hat", entities.get("product"));
+    }
 }

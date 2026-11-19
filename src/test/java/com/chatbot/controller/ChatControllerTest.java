@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -19,7 +20,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Integrationstests fuer die Chat REST-API.
- * Testet alle Endpoints mit MockMvc und echter H2-Datenbank.
+ * Testet alle Endpoints mit MockMvc, echter H2-Datenbank und Spring Security.
+ *
+ * Alle Tests verwenden @WithMockUser("user") fuer Authentifizierung.
+ * Ohne Authentifizierung werden 401 Unauthorized zurueckgegeben.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -34,7 +38,41 @@ class ChatControllerTest {
     @Autowired
     private ChatMessageRepository chatMessageRepository;
 
+    // ==================== Security Tests ====================
+
     @Test
+    void chat_returns401_withoutAuthentication() throws Exception {
+        ChatRequest request = new ChatRequest("Hello");
+
+        mockMvc.perform(post("/api/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void getHistory_returns401_withoutAuthentication() throws Exception {
+        mockMvc.perform(get("/api/chat/history"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void clearHistory_returns401_withoutAuthentication() throws Exception {
+        mockMvc.perform(delete("/api/chat/history"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void indexHtml_isAccessibleWithoutAuth() throws Exception {
+        mockMvc.perform(get("/index.html"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("RuleBot Chat")));
+    }
+
+    // ==================== Authenticated Tests ====================
+
+    @Test
+    @WithMockUser("user")
     void chat_returns200_withValidInput() throws Exception {
         ChatRequest request = new ChatRequest("Hello");
 
@@ -48,6 +86,7 @@ class ChatControllerTest {
     }
 
     @Test
+    @WithMockUser("user")
     void chat_returns400_withEmptyBody() throws Exception {
         mockMvc.perform(post("/api/chat")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -56,6 +95,7 @@ class ChatControllerTest {
     }
 
     @Test
+    @WithMockUser("user")
     void chat_returns400_withBlankMessage() throws Exception {
         ChatRequest request = new ChatRequest("   ");
 
@@ -66,6 +106,7 @@ class ChatControllerTest {
     }
 
     @Test
+    @WithMockUser("user")
     void chat_returns400_withTooLongMessage() throws Exception {
         ChatRequest request = new ChatRequest("a".repeat(501));
 
@@ -76,6 +117,7 @@ class ChatControllerTest {
     }
 
     @Test
+    @WithMockUser("user")
     void chat_savesMessagesToDatabase() throws Exception {
         chatMessageRepository.deleteAll();
 
@@ -94,6 +136,7 @@ class ChatControllerTest {
     }
 
     @Test
+    @WithMockUser("user")
     void chat_detectsPriceIntent() throws Exception {
         ChatRequest request = new ChatRequest("What is the price of jeans?");
 
@@ -106,6 +149,7 @@ class ChatControllerTest {
     }
 
     @Test
+    @WithMockUser("user")
     void chat_detectsOrderIntent() throws Exception {
         ChatRequest request = new ChatRequest("I want to order 3 pants");
 
@@ -119,6 +163,7 @@ class ChatControllerTest {
     }
 
     @Test
+    @WithMockUser("user")
     void chat_detectsGoodbyeIntent() throws Exception {
         ChatRequest request = new ChatRequest("Bye!");
 
@@ -130,6 +175,7 @@ class ChatControllerTest {
     }
 
     @Test
+    @WithMockUser("user")
     void chat_detectsUnknownIntent() throws Exception {
         ChatRequest request = new ChatRequest("xyzabc123");
 
@@ -141,6 +187,7 @@ class ChatControllerTest {
     }
 
     @Test
+    @WithMockUser("user")
     void getHistory_returnsEmptyList_whenNoMessages() throws Exception {
         chatMessageRepository.deleteAll();
 
@@ -151,6 +198,7 @@ class ChatControllerTest {
     }
 
     @Test
+    @WithMockUser("user")
     void getHistory_returnsMessages() throws Exception {
         chatMessageRepository.deleteAll();
 
@@ -169,6 +217,7 @@ class ChatControllerTest {
     }
 
     @Test
+    @WithMockUser("user")
     void getHistory_withLimit() throws Exception {
         chatMessageRepository.deleteAll();
 
@@ -188,6 +237,7 @@ class ChatControllerTest {
     }
 
     @Test
+    @WithMockUser("user")
     void clearHistory_deletesAllMessages() throws Exception {
         // Nachricht senden
         ChatRequest request = new ChatRequest("Hello");

@@ -21,6 +21,86 @@
             flex-direction: column;
         }
 
+        /* Login Screen */
+        .login-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 360px;
+            text-align: center;
+        }
+
+        .login-box h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .login-box p {
+            color: #999;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .login-box input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 12px;
+            outline: none;
+        }
+
+        .login-box input:focus {
+            border-color: #4a90d9;
+        }
+
+        .login-box button {
+            width: 100%;
+            padding: 12px;
+            background-color: #4a90d9;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        .login-box button:hover {
+            background-color: #357abd;
+        }
+
+        .login-error {
+            color: #e74c3c;
+            font-size: 13px;
+            margin-top: 8px;
+            display: none;
+        }
+
+        .login-hint {
+            color: #999;
+            font-size: 12px;
+            margin-top: 16px;
+        }
+
+        /* Chat Screen (hidden by default) */
+        .chat-screen {
+            display: none;
+            flex-direction: column;
+            height: 100vh;
+        }
+
         .header {
             background-color: #4a90d9;
             color: white;
@@ -30,6 +110,12 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+        }
+
+        .header .user-info {
+            font-size: 13px;
+            font-weight: 400;
+            opacity: 0.9;
         }
 
         .connection-status {
@@ -139,40 +225,86 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <span>RuleBot Chat</span>
-        <span id="connectionStatus" class="connection-status">Verbunden</span>
-    </div>
-
-    <div id="chatContainer" class="chat-container">
-        <div class="welcome-message">
-            Willkommen! Schicke eine Nachricht an den Bot.<br>
-            Beispiel: "Hello", "How much is a t-shirt?", "I want to order 2 pants"
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-box">
+            <h1>RuleBot Chat</h1>
+            <p>Melde dich an, um den Chat zu starten.</p>
+            <input type="text" id="username" placeholder="Benutzername" autocomplete="username">
+            <input type="password" id="password" placeholder="Passwort" autocomplete="current-password">
+            <button onclick="login()">Anmelden</button>
+            <div id="loginError" class="login-error">Falscher Benutzername oder Passwort.</div>
+            <div class="login-hint">Demo: user / password</div>
         </div>
     </div>
 
-    <div class="input-area">
-        <input type="text" id="messageInput" placeholder="Schreibe eine Nachricht..." autocomplete="off">
-        <button id="sendButton" onclick="sendMessage()">Senden</button>
+    <!-- Chat Screen (hidden until login) -->
+    <div id="chatScreen" class="chat-screen">
+        <div class="header">
+            <div>
+                <span>RuleBot Chat</span>
+                <span id="userInfo" class="user-info"></span>
+            </div>
+            <span id="connectionStatus" class="connection-status">Verbunden</span>
+        </div>
+
+        <div id="chatContainer" class="chat-container">
+            <div class="welcome-message">
+                Willkommen! Schicke eine Nachricht an den Bot.<br>
+                Beispiel: "Hello", "How much is a t-shirt?", "I want to order 2 pants"
+            </div>
+        </div>
+
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Schreibe eine Nachricht..." autocomplete="off">
+            <button id="sendButton" onclick="sendMessage()">Senden</button>
+        </div>
     </div>
 
     <script>
         let stompClient = null;
+        let authenticatedUser = null;
 
-        function connect() {
+        // Login: Credentials an Server senden und WebSocket verbinden
+        function login() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('loginError');
+
+            if (!username || !password) {
+                errorDiv.textContent = 'Bitte Benutzername und Passwort eingeben.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            // HTTP Basic Auth Header erstellen
+            const credentials = btoa(username + ':' + password);
+            const headers = {
+                'Authorization': 'Basic ' + credentials
+            };
+
+            // WebSocket Verbindung mit Auth-Headern
             const socket = new SockJS('/ws');
             stompClient = Stomp.over(socket);
 
-            stompClient.connect({}, function (frame) {
+            stompClient.connect(headers, function (frame) {
+                // Login erfolgreich
+                authenticatedUser = username;
+                errorDiv.style.display = 'none';
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('chatScreen').style.display = 'flex';
+                document.getElementById('userInfo').textContent = 'Angemeldet als: ' + username;
                 document.getElementById('connectionStatus').textContent = 'Verbunden';
                 document.getElementById('connectionStatus').classList.add('connected');
                 document.getElementById('sendButton').disabled = false;
+                document.getElementById('messageInput').focus();
                 console.log('WebSocket verbunden: ' + frame);
             }, function (error) {
-                document.getElementById('connectionStatus').textContent = 'Fehler';
-                document.getElementById('connectionStatus').classList.remove('connected');
+                // Login fehlgeschlagen
                 console.error('WebSocket Fehler: ' + error);
-                addMessage('Verbindungsfehler. Seite neu laden.', 'error');
+                errorDiv.textContent = 'Falscher Benutzername oder Passwort.';
+                errorDiv.style.display = 'block';
+                stompClient = null;
             });
 
             // Bot-Antworten empfangen
@@ -229,15 +361,24 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        // Enter-Taste zum Senden
+        // Enter-Taste zum Senden (Login)
+        document.getElementById('password').addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                login();
+            }
+        });
+        document.getElementById('username').addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                document.getElementById('password').focus();
+            }
+        });
+
+        // Enter-Taste zum Senden (Chat)
         document.getElementById('messageInput').addEventListener('keydown', function (event) {
             if (event.key === 'Enter') {
                 sendMessage();
             }
         });
-
-        // Verbindung beim Laden herstellen
-        connect();
     </script>
 </body>
 </html>

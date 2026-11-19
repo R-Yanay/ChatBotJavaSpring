@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RuleBot - Chat</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
     <style>
         * {
@@ -664,50 +665,51 @@
 
         // WebSocket verbinden (nach erfolgreichem Login)
         function connectWebSocket() {
-            // Native WebSocket statt SockJS - funktioniert besser mit Spring Security
-            const socket = new WebSocket('ws://localhost:8083/ws');
+            console.log('Verbinde WebSocket...');
+            const socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
 
-            socket.onopen = function () {
-                stompClient = Stomp.over(socket);
+            stompClient.connect({}, function (frame) {
+                console.log('STOMP verbunden: ' + frame);
+                document.getElementById('connectionStatus').textContent = 'Verbunden';
+                document.getElementById('connectionStatus').classList.add('connected');
+                document.getElementById('sendButton').disabled = false;
+                document.getElementById('messageInput').focus();
+                addMessage('Chat verbunden. Schicke eine Nachricht!', 'bot');
+            }, function (error) {
+                console.error('STOMP Connect Fehler: ' + error);
+                document.getElementById('connectionStatus').textContent = 'Fehler';
+                addMessage('WebSocket-Verbindung fehlgeschlagen. Bitte Seite neu laden.', 'error');
+            });
 
-                // STOMP CONNECT ohne Auth-Header (Auth bereits via REST geprueft)
-                stompClient.connect({}, function (frame) {
-                    console.log('WebSocket verbunden: ' + frame);
-                    document.getElementById('connectionStatus').textContent = 'Verbunden';
-                    document.getElementById('connectionStatus').classList.add('connected');
-                    document.getElementById('sendButton').disabled = false;
-                    document.getElementById('messageInput').focus();
-                }, function (error) {
-                    console.error('STOMP Fehler: ' + error);
-                    addMessage('WebSocket-Verbindung fehlgeschlagen.', 'error');
-                });
-
-                // Bot-Antworten empfangen
-                stompClient.subscribe('/chat/response', function (response) {
+            // Bot-Antworten empfangen
+            stompClient.subscribe('/chat/response', function (response) {
+                try {
                     const data = JSON.parse(response.body);
                     addMessage(data.response, 'bot', data.intent);
-                });
-            };
-
-            socket.onclose = function () {
-                console.log('WebSocket getrennt');
-                document.getElementById('connectionStatus').textContent = 'Getrennt';
-                document.getElementById('connectionStatus').classList.remove('connected');
-            };
-
-            socket.onerror = function (error) {
-                console.error('WebSocket Fehler:', error);
-                document.getElementById('connectionStatus').textContent = 'Fehler';
-            };
+                } catch (e) {
+                    console.error('Fehler beim Parsen der Antwort:', e);
+                    addMessage('Unerwartete Antwort vom Server.', 'error');
+                }
+            });
         }
 
         function sendMessage() {
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
 
-            if (!message || !stompClient) {
+            if (!message) {
+                console.log('Leere Nachricht, ignoriert');
                 return;
             }
+
+            if (!stompClient || !stompClient.connected) {
+                console.log('stompClient nicht verbunden');
+                addMessage('Nicht verbunden. Bitte Seite neu laden.', 'error');
+                return;
+            }
+
+            console.log('Sende Nachricht:', message);
 
             // Nutzernachricht anzeigen
             addMessage(message, 'user');

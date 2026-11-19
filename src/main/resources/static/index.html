@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RuleBot - Chat</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
     <style>
         * {
@@ -662,12 +663,15 @@
             });
         }
 
-        // WebSocket verbinden (nach erfolgreichem Login) - StompJs v7
+        // WebSocket verbinden (nach erfolgreichem Login) - StompJs v7 mit SockJS
         function connectWebSocket() {
-            console.log('Verbinde WebSocket...');
+            console.log('Verbinde WebSocket mit SockJS...');
 
             stompClient = new StompJs.Client({
-                brokerURL: 'ws://localhost:8083/ws',
+                webSocketFactory: function () {
+                    console.log('SockJS wird erstellt...');
+                    return new SockJS('/ws');
+                },
                 debug: function (str) { console.log('STOMP:', str); },
                 reconnectDelay: 5000,
                 onConnect: function (frame) {

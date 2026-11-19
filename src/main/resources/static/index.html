@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RuleBot - Chat</title>
-    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
     <style>
         * {
@@ -621,7 +620,7 @@
             }
         }
 
-        // Login: Credentials an Server senden und WebSocket verbinden
+        // Login: Zuerst REST-API testen, dann WebSocket verbinden
         function login() {
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
@@ -633,41 +632,73 @@
                 return;
             }
 
-            // HTTP Basic Auth Header erstellen
+            // Zuerst die Credentials via REST-API pruefen
             const credentials = btoa(username + ':' + password);
-            const headers = {
-                'Authorization': 'Basic ' + credentials
+            fetch('/api/chat/history?limit=1', {
+                method: 'GET',
+                headers: { 'Authorization': 'Basic ' + credentials }
+            })
+            .then(function (response) {
+                if (response.ok) {
+                    // Credentials korrekt - WebSocket verbinden
+                    errorDiv.style.display = 'none';
+                    authenticatedUser = username;
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('chatScreen').style.display = 'flex';
+                    document.getElementById('userInfo').textContent = 'Angemeldet als: ' + username;
+                    connectWebSocket();
+                } else if (response.status === 401) {
+                    errorDiv.textContent = 'Falscher Benutzername oder Passwort.';
+                    errorDiv.style.display = 'block';
+                } else {
+                    errorDiv.textContent = 'Fehler: ' + response.status;
+                    errorDiv.style.display = 'block';
+                }
+            })
+            .catch(function (error) {
+                console.error('Login Fehler:', error);
+                errorDiv.textContent = 'Verbindungsfehler. Ist der Server gestartet?';
+                errorDiv.style.display = 'block';
+            });
+        }
+
+        // WebSocket verbinden (nach erfolgreichem Login)
+        function connectWebSocket() {
+            // Native WebSocket statt SockJS - funktioniert besser mit Spring Security
+            const socket = new WebSocket('ws://localhost:8083/ws');
+
+            socket.onopen = function () {
+                stompClient = Stomp.over(socket);
+
+                // STOMP CONNECT ohne Auth-Header (Auth bereits via REST geprueft)
+                stompClient.connect({}, function (frame) {
+                    console.log('WebSocket verbunden: ' + frame);
+                    document.getElementById('connectionStatus').textContent = 'Verbunden';
+                    document.getElementById('connectionStatus').classList.add('connected');
+                    document.getElementById('sendButton').disabled = false;
+                    document.getElementById('messageInput').focus();
+                }, function (error) {
+                    console.error('STOMP Fehler: ' + error);
+                    addMessage('WebSocket-Verbindung fehlgeschlagen.', 'error');
+                });
+
+                // Bot-Antworten empfangen
+                stompClient.subscribe('/chat/response', function (response) {
+                    const data = JSON.parse(response.body);
+                    addMessage(data.response, 'bot', data.intent);
+                });
             };
 
-            // WebSocket Verbindung mit Auth-Headern
-            const socket = new SockJS('/ws');
-            stompClient = Stomp.over(socket);
+            socket.onclose = function () {
+                console.log('WebSocket getrennt');
+                document.getElementById('connectionStatus').textContent = 'Getrennt';
+                document.getElementById('connectionStatus').classList.remove('connected');
+            };
 
-            stompClient.connect(headers, function (frame) {
-                // Login erfolgreich
-                authenticatedUser = username;
-                errorDiv.style.display = 'none';
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('chatScreen').style.display = 'flex';
-                document.getElementById('userInfo').textContent = 'Angemeldet als: ' + username;
-                document.getElementById('connectionStatus').textContent = 'Verbunden';
-                document.getElementById('connectionStatus').classList.add('connected');
-                document.getElementById('sendButton').disabled = false;
-                document.getElementById('messageInput').focus();
-                console.log('WebSocket verbunden: ' + frame);
-            }, function (error) {
-                // Login fehlgeschlagen
-                console.error('WebSocket Fehler: ' + error);
-                errorDiv.textContent = 'Falscher Benutzername oder Passwort.';
-                errorDiv.style.display = 'block';
-                stompClient = null;
-            });
-
-            // Bot-Antworten empfangen
-            stompClient.subscribe('/chat/response', function (response) {
-                const data = JSON.parse(response.body);
-                addMessage(data.response, 'bot', data.intent);
-            });
+            socket.onerror = function (error) {
+                console.error('WebSocket Fehler:', error);
+                document.getElementById('connectionStatus').textContent = 'Fehler';
+            };
         }
 
         function sendMessage() {

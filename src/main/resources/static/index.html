@@ -222,6 +222,142 @@
             border-radius: 8px;
             font-size: 13px;
         }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            gap: 0;
+            background-color: #357abd;
+        }
+
+        .tab-nav button {
+            flex: 1;
+            padding: 10px;
+            background: none;
+            color: rgba(255, 255, 255, 0.7);
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .tab-nav button.active {
+            color: white;
+            border-bottom-color: white;
+        }
+
+        .tab-nav button:hover {
+            color: white;
+        }
+
+        /* API Docs Panel */
+        .api-docs {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .api-docs h2 {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 16px;
+        }
+
+        .api-docs h3 {
+            font-size: 16px;
+            color: #555;
+            margin-top: 24px;
+            margin-bottom: 8px;
+        }
+
+        .endpoint-card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .endpoint-card .method {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            margin-right: 8px;
+        }
+
+        .method.post { background-color: #27ae60; }
+        .method.get { background-color: #2980b9; }
+        .method.delete { background-color: #e74c3c; }
+        .method.ws { background-color: #8e44ad; }
+
+        .endpoint-card .path {
+            font-family: monospace;
+            font-size: 14px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .endpoint-card .desc {
+            color: #666;
+            font-size: 13px;
+            margin-top: 6px;
+        }
+
+        .endpoint-card .auth-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-top: 6px;
+        }
+
+        .auth-badge.required { background-color: #ffeaa7; color: #d63031; }
+        .auth-badge.none { background-color: #dfe6e9; color: #636e72; }
+
+        .endpoint-card pre {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 10px 12px;
+            font-size: 12px;
+            overflow-x: auto;
+            margin-top: 8px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .endpoint-card .label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #888;
+            text-transform: uppercase;
+            margin-top: 8px;
+        }
+
+        .intent-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            font-size: 13px;
+        }
+
+        .intent-table th, .intent-table td {
+            padding: 6px 10px;
+            border: 1px solid #e0e0e0;
+            text-align: left;
+        }
+
+        .intent-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+        }
     </style>
 </head>
 <body>
@@ -248,22 +384,242 @@
             <span id="connectionStatus" class="connection-status">Verbunden</span>
         </div>
 
-        <div id="chatContainer" class="chat-container">
-            <div class="welcome-message">
-                Willkommen! Schicke eine Nachricht an den Bot.<br>
-                Beispiel: "Hello", "How much is a t-shirt?", "I want to order 2 pants"
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button id="chatTab" class="active" onclick="switchTab('chat')">Chat</button>
+            <button id="apiTab" onclick="switchTab('api')">API-Dokumentation</button>
+        </div>
+
+        <!-- Chat Panel -->
+        <div id="chatPanel">
+            <div id="chatContainer" class="chat-container">
+                <div class="welcome-message">
+                    Willkommen! Schicke eine Nachricht an den Bot.<br>
+                    Beispiel: "Hello", "How much is a t-shirt?", "I want to order 2 pants"
+                </div>
+            </div>
+
+            <div class="input-area">
+                <input type="text" id="messageInput" placeholder="Schreibe eine Nachricht..." autocomplete="off">
+                <button id="sendButton" onclick="sendMessage()">Senden</button>
             </div>
         </div>
 
-        <div class="input-area">
-            <input type="text" id="messageInput" placeholder="Schreibe eine Nachricht..." autocomplete="off">
-            <button id="sendButton" onclick="sendMessage()">Senden</button>
+        <!-- API Documentation Panel -->
+        <div id="apiDocsPanel" class="api-docs">
+            <h2>API-Endpunkte</h2>
+            <p style="color: #666; font-size: 14px; margin-bottom: 16px;">
+                Alle verf&uuml;gbaren REST- und WebSocket-Endpunkte der RuleBot API.
+                Basis-URL: <code>http://localhost:8083</code>
+            </p>
+
+            <h3>REST API</h3>
+
+            <div class="endpoint-card">
+                <span class="method post">POST</span>
+                <span class="path">/api/chat</span>
+                <div class="desc">Nachricht an den Bot senden und Antwort erhalten.</div>
+                <span class="auth-badge required">Auth erforderlich</span>
+                <div class="label">Request</div>
+                <pre>{
+  "message": "How much is a t-shirt?"
+}</pre>
+                <div class="label">Response</div>
+                <pre>{
+  "response": "A T-shirt costs 25.00 Euro.",
+  "intent": "ASK_PRICE"
+}</pre>
+            </div>
+
+            <div class="endpoint-card">
+                <span class="method get">GET</span>
+                <span class="path">/api/chat/history?limit=50</span>
+                <div class="desc">Chat-Verlauf aus der H2-Datenbank laden (neueste zuerst).</div>
+                <span class="auth-badge required">Auth erforderlich</span>
+                <div class="label">Response</div>
+                <pre>[
+  {
+    "id": 1,
+    "text": "Hello",
+    "sender": "user",
+    "intent": "GREETING",
+    "timestamp": "2026-11-19T14:00:00"
+  },
+  {
+    "id": 2,
+    "text": "Hello! How can I help you today?",
+    "sender": "bot",
+    "intent": "GREETING",
+    "timestamp": "2026-11-19T14:00:01"
+  }
+]</pre>
+            </div>
+
+            <div class="endpoint-card">
+                <span class="method delete">DELETE</span>
+                <span class="path">/api/chat/history</span>
+                <div class="desc">Gesamten Chat-Verlauf aus der Datenbank l&ouml;schen.</div>
+                <span class="auth-badge required">Auth erforderlich</span>
+                <div class="label">Response</div>
+                <pre>204 No Content</pre>
+            </div>
+
+            <h3>WebSocket</h3>
+
+            <div class="endpoint-card">
+                <span class="method ws">WS</span>
+                <span class="path">/ws</span>
+                <div class="desc">WebSocket-Endpunkt mit SockJS-Fallback. STOMP-Protokoll.</div>
+                <span class="auth-badge required">Auth erforderlich</span>
+            </div>
+
+            <div class="endpoint-card">
+                <span class="method ws">SEND</span>
+                <span class="path">/app/chat/send</span>
+                <div class="desc">Nachricht an den Bot &uuml;ber WebSocket senden.</div>
+                <div class="label">Payload</div>
+                <pre>{
+  "message": "I want to order 2 pants"
+}</pre>
+            </div>
+
+            <div class="endpoint-card">
+                <span class="method ws">SUBSCRIBE</span>
+                <span class="path">/chat/response</span>
+                <div class="desc">Bot-Antworten in Echtzeit empfangen.</div>
+                <div class="label">Response</div>
+                <pre>{
+  "response": "I have received your order for 2 Pants.",
+  "intent": "ORDER"
+}</pre>
+            </div>
+
+            <h3>Statische Ressourcen</h3>
+
+            <div class="endpoint-card">
+                <span class="method get">GET</span>
+                <span class="path">/index.html</span>
+                <div class="desc">Diese Seite — Login-Screen und Chat-Frontend.</div>
+                <span class="auth-badge none">Keine Auth</span>
+            </div>
+
+            <h3>Verf&uuml;gbare Intents</h3>
+
+            <div class="endpoint-card">
+                <table class="intent-table">
+                    <tr>
+                        <th>Intent</th>
+                        <th>Beispiel</th>
+                        <th>Antwort</th>
+                    </tr>
+                    <tr>
+                        <td>GREETING</td>
+                        <td>"Hello", "Hi"</td>
+                        <td>"Hello! How can I help you today?"</td>
+                    </tr>
+                    <tr>
+                        <td>ASK_PRICE</td>
+                        <td>"How much is a t-shirt?"</td>
+                        <td>"A T-shirt costs 25.00 Euro."</td>
+                    </tr>
+                    <tr>
+                        <td>ORDER</td>
+                        <td>"I want to order 2 pants"</td>
+                        <td>"I have received your order for 2 Pants."</td>
+                    </tr>
+                    <tr>
+                        <td>CONFIRM</td>
+                        <td>"Yes", "OK"</td>
+                        <td>"Your order has been placed!"</td>
+                    </tr>
+                    <tr>
+                        <td>CANCEL</td>
+                        <td>"No", "Cancel"</td>
+                        <td>"Order cancelled."</td>
+                    </tr>
+                    <tr>
+                        <td>GOODBYE</td>
+                        <td>"Bye", "Goodbye"</td>
+                        <td>"Goodbye! Have a great day!"</td>
+                    </tr>
+                    <tr>
+                        <td>HELP</td>
+                        <td>"Help", "What can you do?"</td>
+                        <td>Liste der Befehle</td>
+                    </tr>
+                    <tr>
+                        <td>SEARCH</td>
+                        <td>"Show me blue sneakers"</td>
+                        <td>"I found Blue Sneakers. Price: 80.00 Euro."</td>
+                    </tr>
+                    <tr>
+                        <td>RETURN</td>
+                        <td>"I want to return"</td>
+                        <td>"What item do you want to return?"</td>
+                    </tr>
+                    <tr>
+                        <td>SHIPPING</td>
+                        <td>"How long is shipping?"</td>
+                        <td>"Shipping takes 3-5 business days."</td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3>Produktkatalog</h3>
+
+            <div class="endpoint-card">
+                <table class="intent-table">
+                    <tr>
+                        <th>Produkt</th>
+                        <th>Preis</th>
+                    </tr>
+                    <tr><td>T-Shirt</td><td>25.00 Euro</td></tr>
+                    <tr><td>Pants</td><td>45.00 Euro</td></tr>
+                    <tr><td>Sneakers</td><td>80.00 Euro</td></tr>
+                    <tr><td>Jacket</td><td>120.00 Euro</td></tr>
+                    <tr><td>Dress</td><td>65.00 Euro</td></tr>
+                    <tr><td>Jeans</td><td>55.00 Euro</td></tr>
+                    <tr><td>Hoodie</td><td>50.00 Euro</td></tr>
+                    <tr><td>Shorts</td><td>30.00 Euro</td></tr>
+                    <tr><td>Socks</td><td>10.00 Euro</td></tr>
+                    <tr><td>Hat</td><td>20.00 Euro</td></tr>
+                    <tr><td>Scarf</td><td>15.00 Euro</td></tr>
+                    <tr><td>Gloves</td><td>18.00 Euro</td></tr>
+                    <tr><td>Belt</td><td>22.00 Euro</td></tr>
+                    <tr><td>Shoes</td><td>90.00 Euro</td></tr>
+                    <tr><td>Sweater</td><td>60.00 Euro</td></tr>
+                    <tr><td>Coat</td><td>150.00 Euro</td></tr>
+                </table>
+            </div>
         </div>
     </div>
 
     <script>
         let stompClient = null;
         let authenticatedUser = null;
+
+        // Tab-Umschaltung zwischen Chat und API-Dokumentation
+        function switchTab(tab) {
+            const chatPanel = document.getElementById('chatPanel');
+            const apiDocsPanel = document.getElementById('apiDocsPanel');
+            const chatTab = document.getElementById('chatTab');
+            const apiTab = document.getElementById('apiTab');
+
+            if (tab === 'chat') {
+                chatPanel.style.display = 'flex';
+                chatPanel.style.flexDirection = 'column';
+                chatPanel.style.flex = '1';
+                chatPanel.style.overflow = 'hidden';
+                apiDocsPanel.style.display = 'none';
+                chatTab.classList.add('active');
+                apiTab.classList.remove('active');
+            } else {
+                chatPanel.style.display = 'none';
+                apiDocsPanel.style.display = 'block';
+                chatTab.classList.remove('active');
+                apiTab.classList.add('active');
+            }
+        }
 
         // Login: Credentials an Server senden und WebSocket verbinden
         function login() {

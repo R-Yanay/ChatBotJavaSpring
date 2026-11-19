@@ -168,4 +168,44 @@ class IntentDetectorTest {
         assertEquals(Intent.GREETING, detector.detect("HELLO"));
         assertEquals(Intent.GREETING, detector.detect("HeLlO"));
     }
+
+    @Test
+    void askPrice_inventory() {
+        assertEquals(Intent.ASK_PRICE, detector.detect("what are the prices of your inventory?"));
+    }
+
+    @Test
+    void askPrice_sell() {
+        assertEquals(Intent.ASK_PRICE, detector.detect("What do you sell"));
+    }
+
+    @Test
+    void askPrice_offer() {
+        assertEquals(Intent.ASK_PRICE, detector.detect("What do you offer?"));
+    }
+
+    @Test
+    void help_functions() {
+        assertEquals(Intent.HELP, detector.detect("What are your functions?"));
+    }
+
+    @Test
+    void help_capabilities() {
+        assertEquals(Intent.HELP, detector.detect("What are your capabilities?"));
+    }
+
+    @Test
+    void help_features() {
+        assertEquals(Intent.HELP, detector.detect("Tell me about your features"));
+    }
+
+    @Test
+    void followUp_whatAbout() {
+        assertEquals(Intent.ASK_PRICE, detector.detect("what about shirts?"));
+    }
+
+    @Test
+    void followUp_tellMeAbout() {
+        assertEquals(Intent.ASK_PRICE, detector.detect("tell me about pants"));
+    }
 }

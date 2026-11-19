@@ -30,10 +30,15 @@ public class IntentDetector {
             new IntentRule(Intent.GREETING,
                     "(?i)\\b(hi|hello|hey|good morning|good afternoon|good evening|greetings|howdy)\\b"),
 
+            // HELP — muss vor ASK_PRICE, da "tell me about" auch "about" enthaelt (ASK_PRICE)
+            // Erkennt auch: "What are your functions?", "capabilities?", "features?"
+            new IntentRule(Intent.HELP,
+                    "(?i)\\b(help|what can you do|how does this work|support|info|information|functions|capabilities|features|abilities)\\b"),
+
             // ASK_PRICE — spezifisch vor ORDER
-            // Erkennt auch Grammatikfehler: "what do you're stuff cost?", "what does your stuff cost?"
+            // Erkennt auch: "what are the prices?", "what do you sell?", "your inventory?", "what about X?"
             new IntentRule(Intent.ASK_PRICE,
-                    "(?i)\\b(how much|cost|price|pricetag|expensive|cheap|affordable|budget)\\b"),
+                    "(?i)\\b(how much|cost|price|pricetag|expensive|cheap|affordable|budget|sell|offer|inventory|catalogue|catalog|about)\\b"),
 
             // CANCEL — muss vor ORDER, da "cancel my order" das Wort "order" enthaelt
             new IntentRule(Intent.CANCEL,
@@ -54,10 +59,6 @@ public class IntentDetector {
             // GOODBYE — Verabschiedung
             new IntentRule(Intent.GOODBYE,
                     "(?i)\\b(bye|goodbye|see you|see you later|cya|farewell|take care|later)\\b"),
-
-            // HELP — Hilfe
-            new IntentRule(Intent.HELP,
-                    "(?i)\\b(help|what can you do|how does this work|support|info|information)\\b"),
 
             // SEARCH — Produktsuche
             new IntentRule(Intent.SEARCH,

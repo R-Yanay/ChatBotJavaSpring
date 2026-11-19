@@ -23,7 +23,7 @@ Nutzer: "How much is a t-shirt?"
 | Spring Security | HTTP Basic Auth, Benutzer-Authentifizierung |
 | Spring Validation | Nachrichten-Validierung |
 | Java 25 | Sprache |
-| JUnit 5 | 76 Unit- und Integrationstests |
+| JUnit 5 | 119 Unit- und Integrationstests |
 
 ## Schnellstart
 
@@ -72,13 +72,39 @@ Antwort:
 |---------|--------|---------------------|
 | NumberRecognition | CNN (Deep Learning) | REST API |
 | WordRecognition | CRNN (Deep Learning) | REST API |
-| **ChatBotJavaSpring** | **Regelbasiert (kein ML)** | **REST + WebSocket + JPA + Security** |
+| **ChatBotJavaSpring** | **Regelbasiert (kein ML)** | **REST + WebSocket + JPA + Security + Session** |
 
-### Datenfluss
+### Datenfluss (mit Gedaechtnis)
 
 ```
-Nutzer → WebSocket/REST → ChatController → IntentDetector → EntityExtractor → ResponseGenerator → Antwort
+Nutzer → WebSocket/REST → ChatController → SessionManager → ChatService
+  → IntentDetector (mit Kontext) → EntityExtractor (mit Kontext)
+  → ResponseGenerator (mit Workflow) → Session aktualisieren → Antwort
 ```
+
+### Gedaechtnis-System
+
+Der ChatBot unterstuetzt **Session-basiertes Gedaechtnis** — er erinnert sich an vorherige Nachrichten, Pronomen und Follow-up-Fragen.
+
+| Feature | Beispiel | Antwort |
+|---------|----------|--------|
+| **Pronomen** | "How much is a shirt?" → "it" | "A Shirt costs 40.00 EUR." |
+| **Follow-up** | "How much is a shirt?" → "what about pants?" | "Pants cost 55.00 EUR." |
+| **Bestell-Workflow** | "I want to order" → Bot fragt nach Produkt → "a shirt" → Bot fragt Bestaetigung → "yes" | Mehrstufiger Dialog |
+| **Session-Timeout** | 30 Minuten Inaktivitaet | Session wird automatisch geloescht |
+
+### ChatSession
+
+| Eigenschaft | Zweck |
+|-------------|-------|
+| `userId` | Benutzer-Identifikation |
+| `lastMessage` | Letzte Nutzernachricht |
+| `lastIntent` | Letzter erkannter Intent |
+| `lastEntities` | Letzte extrahierte Entities |
+| `orderStatus` | Bestellstatus (IDLE, ASKING_PRODUCT, ASKING_CONFIRMATION, CONFIRMED) |
+| `orderProduct` | Produkt in der Bestellung |
+| `orderQuantity` | Menge in der Bestellung |
+| `orderColor` | Farbe in der Bestellung |
 
 ### Systemdatenfluss
 
@@ -86,6 +112,7 @@ Nutzer → WebSocket/REST → ChatController → IntentDetector → EntityExtrac
 sequenceDiagram
     participant Browser
     participant ChatController
+    participant SessionManager
     participant ChatService
     participant IntentDetector
     participant EntityExtractor
@@ -93,20 +120,21 @@ sequenceDiagram
     participant ChatHistoryService
     participant H2DB
 
-    Browser->>ChatController: POST /api/chat {"message": "How much is a t-shirt?"}
-    ChatController->>ChatService: processMessage("How much is a t-shirt?")
-    ChatService->>IntentDetector: detectIntent("How much is a t-shirt?")
+    Browser->>ChatController: POST /api/chat {"message": "How much is a shirt?"}
+    ChatController->>SessionManager: getSession("user")
+    SessionManager-->>ChatController: ChatSession
+    ChatController->>ChatService: process(request, session)
+    ChatService->>IntentDetector: detect("How much is a shirt?", session)
     IntentDetector-->>ChatService: ASK_PRICE
-    ChatService->>EntityExtractor: extractEntities("How much is a t-shirt?")
-    EntityExtractor-->>ChatService: {product: "t-shirt"}
-    ChatService->>ResponseGenerator: generateResponse(ASK_PRICE, {product: "t-shirt"})
-    ResponseGenerator-->>ChatService: "A T-shirt costs 25.00 Euro."
-    ChatService->>ChatHistoryService: saveMessage("How much is a t-shirt?", "user", ASK_PRICE)
-    ChatHistoryService->>H2DB: INSERT INTO chat_messages
-    ChatService->>ChatHistoryService: saveBotResponse("A T-shirt costs 25.00 Euro.", "bot", ASK_PRICE)
+    ChatService->>EntityExtractor: extract("How much is a shirt?", session)
+    EntityExtractor-->>ChatService: {product: "shirt"}
+    ChatService->>ResponseGenerator: generate(ASK_PRICE, {product: "shirt"}, session)
+    ResponseGenerator-->>ChatService: "A Shirt costs 40.00 EUR."
+    ChatService->>SessionManager: session.update(...)
+    ChatService->>ChatHistoryService: saveMessage("How much is a shirt?", "user", ASK_PRICE)
     ChatHistoryService->>H2DB: INSERT INTO chat_messages
     ChatService-->>ChatController: ChatResponse
-    ChatController-->>Browser: {"response": "A T-shirt costs 25.00 Euro.", "intent": "ASK_PRICE"}
+    ChatController-->>Browser: {"response": "A Shirt costs 40.00 EUR.", "intent": "ASK_PRICE"}
 ```
 
 ### Klassendiagramm
@@ -142,27 +170,54 @@ classDiagram
         +getIntentResponses(Intent) List~String~
     }
 
+    class ChatSession {
+        -String userId
+        -String lastMessage
+        -Intent lastIntent
+        -Map~String, String~ lastEntities
+        -OrderStatus orderStatus
+        -String orderProduct
+        -Integer orderQuantity
+        -String orderColor
+        +update(String, Intent, Map)
+        +resetOrder()
+        +isExpired(long) boolean
+    }
+
+    class SessionManager {
+        -ConcurrentHashMap~String, ChatSession~ sessions
+        +getSession(String) ChatSession
+        +removeSession(String) boolean
+        +cleanupExpiredSessions() int
+    }
+
     class IntentDetector {
         -BotConfig botConfig
         +detectIntent(String) Intent
+        +detect(String, ChatSession) Intent
+        +isFollowUp(String) boolean
     }
 
     class EntityExtractor {
         -BotConfig botConfig
         +extractEntities(String) Map~String, String~
+        +extract(String, ChatSession) Map~String, String~
     }
 
     class ResponseGenerator {
         -BotConfig botConfig
         +generateResponse(Intent, Map~String, String~) String
+        +generate(Intent, Map~String, String~, ChatSession) String
     }
 
     class ChatService {
         -IntentDetector intentDetector
         -EntityExtractor entityExtractor
         -ResponseGenerator responseGenerator
+        -SessionManager sessionManager
         -ChatHistoryService chatHistoryService
-        +processMessage(String) ChatResponse
+        +process(ChatRequest) ChatResponse
+        +process(ChatRequest, ChatSession) ChatResponse
     }
 
     class ChatHistoryService {
@@ -210,7 +265,9 @@ classDiagram
     }
 
     ChatBotApplication --> ChatController
+    ChatController --> SessionManager
     ChatController --> ChatService
+    ChatService --> SessionManager
     ChatService --> IntentDetector
     ChatService --> EntityExtractor
     ChatService --> ResponseGenerator
@@ -221,6 +278,7 @@ classDiagram
     EntityExtractor --> BotConfig
     ResponseGenerator --> BotConfig
     ChatWebSocketController --> ChatService
+    SessionManager --> ChatSession
 ```
 
 ## API-Endpunkte
@@ -229,7 +287,7 @@ classDiagram
 
 | Methode | Endpoint | Beschreibung | Auth |
 |---------|----------|-------------|------|
-| `POST` | `/api/chat` | Nachricht senden, Antwort erhalten | Ja |
+| `POST` | `/api/chat` | Nachricht senden, Antwort erhalten (mit Session) | Ja |
 | `GET` | `/api/chat/history?limit=50` | Chat-Verlauf laden | Ja |
 | `DELETE` | `/api/chat/history` | Chat-Verlauf löschen | Ja |
 
@@ -239,9 +297,12 @@ Request:
 
 ```json
 {
-  "message": "I want to order 2 pants"
+  "message": "I want to order 2 pants",
+  "userId": "user"
 }
 ```
+
+**userId** ist optional. Wenn nicht angegeben, wird `anonymous` verwendet. Die userId bindet die Nachricht an eine Session — der Bot erinnert sich an vorherige Nachrichten.
 
 Response:
 
@@ -294,46 +355,60 @@ Response:
 | Intent | Beispiel-Nachrichten | Antwort (Beispiel) |
 |--------|---------------------|-------------------|
 | `GREETING` | "Hello", "Hi", "Good morning" | "Hello! How can I help you today?" (3 Varianten) |
-| `ASK_PRICE` | "How much is a T-shirt?", "What's the price?" | "A t-shirt costs 25.00 EUR." |
-| `ORDER` | "I want to order 2 pants", "Buy a jacket" | "I can help with that! 2 pants costs 55.00 EUR each. Total: 110.00 EUR. Shall I confirm your order?" |
+| `ASK_PRICE` | "How much is a T-shirt?", "What do you sell?", "your inventory?" | "A T-shirt costs 25.00 EUR." / Produktkatalog |
+| `ORDER` | "I want to order 2 pants", "Buy a jacket" | Mehrstufiger Workflow: Produkt → Bestätigung → Bestellt |
 | `CONFIRM` | "Yes", "Please", "OK" | "Great! Your order has been confirmed. Thank you for shopping with us!" (3 Varianten) |
 | `CANCEL` | "No", "Cancel", "Stop" | "No problem, I've cancelled that. Is there anything else you need?" (3 Varianten) |
 | `GOODBYE` | "Bye", "Goodbye", "See you" | "Goodbye! Have a great day!" (3 Varianten) |
-| `HELP` | "Help", "What can you do?" | Liste der verfügbaren Befehle und Produkte |
+| `HELP` | "Help", "What can you do?", "What are your functions?" | Liste der verfügbaren Befehle und Produkte |
 | `SEARCH` | "Show me blue sneakers", "Find a dress" | "I found blue sneakers for 80.00 EUR. Would you like to order it?" |
 | `RETURN` | "I want to return", "Refund" | "You can return any item within 30 days of purchase. Items must be unused and in original packaging." |
 | `SHIPPING` | "How long is shipping?", "Delivery time" | "Standard shipping takes 3-5 business days. Express shipping (1-2 days) is available for an extra 9.99 EUR." |
+
+### Follow-up-Fragen
+
+Dank des Gedaechtnis-Systems versteht der Bot auch Follow-up-Fragen:
+
+| Nachricht | Kontext | Intent | Antwort |
+|-----------|---------|--------|--------|
+| "what about pants?" | Vorher: ASK_PRICE | ASK_PRICE | "Pants cost 55.00 EUR." |
+| "it" | Vorher: product=shirt | ASK_PRICE | "A Shirt costs 40.00 EUR." |
+| "how much?" | Vorher: ASK_PRICE | ASK_PRICE | Antwort basierend auf letztem Produkt |
+| "tell me about jeans" | Kein Kontext nötig | ASK_PRICE | "Jeans cost 60.00 EUR." |
 
 ## Produktkatalog
 
 | Produkt | Preis |
 |---------|-------|
-| T-Shirt | 25.00 Euro |
-| Shirt | 40.00 Euro |
-| Pants | 55.00 Euro |
-| Jeans | 60.00 Euro |
-| Jacket | 90.00 Euro |
-| Dress | 70.00 Euro |
-| Skirt | 45.00 Euro |
-| Sweater | 50.00 Euro |
-| Hoodie | 45.00 Euro |
-| Sneakers | 80.00 Euro |
-| Boots | 100.00 Euro |
-| Sandals | 35.00 Euro |
-| Hat | 20.00 Euro |
-| Scarf | 15.00 Euro |
-| Belt | 25.00 Euro |
-| Bag | 60.00 Euro |
+| T-Shirt | 25.00 EUR |
+| Shirt | 40.00 EUR |
+| Pants | 55.00 EUR |
+| Jeans | 60.00 EUR |
+| Jacket | 90.00 EUR |
+| Dress | 70.00 EUR |
+| Skirt | 45.00 EUR |
+| Sweater | 50.00 EUR |
+| Hoodie | 45.00 EUR |
+| Sneakers | 80.00 EUR |
+| Boots | 100.00 EUR |
+| Sandals | 35.00 EUR |
+| Hat | 20.00 EUR |
+| Scarf | 15.00 EUR |
+| Belt | 25.00 EUR |
+| Bag | 60.00 EUR |
 
 ## Tests
 
 | Test-Klasse | Tests | Beschreibung |
 |-------------|-------|-------------|
-| `IntentDetectorTest` | 31 | Alle 10 Intents, Fall-Insensitivity, Regel-Reihenfolge |
+| `IntentDetectorTest` | 39 | Alle 10 Intents, Follow-up, neue Keywords (sell, inventory, functions) |
 | `EntityExtractorTest` | 15 | Produktnamen, Farben, Mengen, Kombinationen |
 | `ResponseGeneratorTest` | 13 | Alle Intents, Entity-Platzhalter, Fallback |
 | `ChatControllerTest` | 17 | REST-API, Validierung, JPA, Security (401/200) |
-| **Gesamt** | **76** | **0 Failures, 0 Errors** |
+| `ChatSessionTest` | 10 | Session-Erstellung, Timeout, Daten-Speicherung, OrderStatus |
+| `SessionManagerTest` | 10 | Session-Management, Cleanup, aktive Sessions |
+| `ChatServiceTest` | 15 | Kontext-Verarbeitung, Pronomen, Follow-up, Workflow |
+| **Gesamt** | **119** | **0 Failures, 0 Errors** |
 
 ```bash
 mvn test
@@ -352,8 +427,10 @@ ChatBotJavaSpring/
 │   │   │   ├── ChatBotApplication.java          # Spring Boot Hauptklasse
 │   │   │   ├── config/
 │   │   │   │   ├── BotConfig.java               # Produktkatalog, Preise, Regeln
+│   │   │   │   ├── GlobalExceptionHandler.java  # Exception-Handling
 │   │   │   │   ├── SecurityConfig.java          # HTTP Basic Auth
-│   │   │   │   └── WebSocketConfig.java         # STOMP WebSocket
+│   │   │   │   ├── WebSocketConfig.java         # STOMP WebSocket
+│   │   │   │   └── WebSocketAuthInterceptor.java # WebSocket Auth
 │   │   │   ├── controller/
 │   │   │   │   ├── ChatController.java          # REST API Endpoints
 │   │   │   │   └── ChatWebSocketController.java # WebSocket Handler
@@ -362,15 +439,17 @@ ChatBotJavaSpring/
 │   │   │   │   └── ChatResponse.java            # Bot response DTO
 │   │   │   ├── model/
 │   │   │   │   ├── ChatMessage.java             # JPA Entity
+│   │   │   │   ├── ChatSession.java             # Session-Gedaechtnis
 │   │   │   │   └── Intent.java                  # Intent-Enum (10 Intents)
 │   │   │   ├── repository/
 │   │   │   │   └── ChatMessageRepository.java   # JPA Repository
 │   │   │   └── service/
-│   │   │       ├── ChatService.java             # Koordiniert Intent → Entity → Response
 │   │   │       ├── ChatHistoryService.java      # Chat-Verlauf speichern/laden
-│   │   │       ├── EntityExtractor.java         # Extrahiert Produkt, Farbe, Menge
-│   │   │       ├── IntentDetector.java          # Erkennt Absicht via Regex
-│   │   │       └── ResponseGenerator.java       # Generiert Antwort pro Intent
+│   │   │       ├── ChatService.java             # Koordiniert Intent → Entity → Response (mit Session)
+│   │   │       ├── EntityExtractor.java         # Extrahiert Produkt, Farbe, Menge (mit Kontext)
+│   │   │       ├── IntentDetector.java          # Erkennt Absicht via Regex (mit Kontext)
+│   │   │       ├── ResponseGenerator.java       # Generiert Antwort pro Intent (mit Workflow)
+│   │   │       └── SessionManager.java          # Session-Management, Timeout
 │   │   └── resources/
 │   │       ├── application.properties           # Port 8083, H2 Database
 │   │       └── static/
@@ -378,10 +457,13 @@ ChatBotJavaSpring/
 │   └── test/java/com/chatbot/
 │       ├── controller/
 │       │   └── ChatControllerTest.java          # 17 Integrationstests
+│       ├── ChatSessionTest.java                 # 10 Tests
+│       ├── SessionManagerTest.java              # 10 Tests
+│       ├── IntentDetectorTest.java              # 39 Tests
+│       ├── EntityExtractorTest.java             # 15 Tests
+│       ├── ResponseGeneratorTest.java           # 13 Tests
 │       └── service/
-│           ├── EntityExtractorTest.java         # 15 Tests
-│           ├── IntentDetectorTest.java          # 31 Tests
-│           └── ResponseGeneratorTest.java       # 13 Tests
+│           └── ChatServiceTest.java             # 15 Tests
 ```
 
 ## Vergleich zu deinen Projekten
@@ -390,11 +472,11 @@ ChatBotJavaSpring/
 |---------|--------|---------------------|-------|
 | NumberRecognition | CNN (Deep Learning) | REST API | 37 JUnit-Tests |
 | WordRecognition | CRNN (Deep Learning) | REST API | 33 JUnit-Tests |
-| **ChatBotJavaSpring** | **Regelbasiert (kein ML)** | **REST + WebSocket + JPA + Security** | **76 JUnit-Tests** |
+| **ChatBotJavaSpring** | **Regelbasiert (kein ML)** | **REST + WebSocket + JPA + Security + Session** | **119 JUnit-Tests** |
 
 ## Lessons Learned
 
-1. **Intent-Reihenfolge ist kritisch**: CANCEL und RETURN müssen vor ORDER erkannt werden, da "cancel my order" und "I want to return" auch ORDER-Keywords enthalten.
+1. **Intent-Reihenfolge ist kritisch**: CANCEL und RETURN müssen vor ORDER erkannt werden, da "cancel my order" und "I want to return" auch ORDER-Keywords enthalten. HELP muss vor ASK_PRICE, da "tell me about" auch "about" enthält.
 2. **Spring Security CSRF**: CSRF muss für REST-API deaktiviert werden, sonst blockiert es alle POST-Anfragen mit 403.
 3. **WebSocket Auth via REST-API**: SockJS leitet benutzerdefinierte STOMP-Header nicht zuverlässig weiter. Lösung: Credentials zuerst über REST-API (HTTP Basic Auth) validieren, dann WebSocket ohne Auth-Header verbinden.
 4. **StompJs v7 mit SockJS**: Native WebSocket (`ws://`) funktioniert nicht mit Spring `withSockJS()`. Stattdessen `webSocketFactory` mit `new SockJS('/ws')` verwenden.
@@ -405,9 +487,14 @@ ChatBotJavaSpring/
 9. **Chat-Verlauf**: JPA mit `@OrderBy` und `setMaxResults` ist einfach, aber `@Param` in JPQL ohne `setMaxResults` funktioniert nicht.
 10. **Frontend Login**: WebSocket-Auth erfordert, dass der Login-Screen statisch (ohne Auth) zugänglich ist.
 11. **Java 25 + Mockito**: Mockito Inline-Mocking funktioniert nicht mit Java 25 — echte Objekte statt Mocks verwenden.
+12. **Session-basiertes Gedächtnis**: ConcurrentHashMap für In-Memory Sessions ist einfach, aber Sessions gehen beim Neustart verloren. Für Produktion: Redis oder Database.
+13. **Follow-up-Fragen**: "what about X?" und "and X?" müssen vom IntentDetector erkannt und mit dem letzten Intent kombiniert werden. Pronomen ("it", "that") referenzieren die letzten Entities.
+14. **Bestell-Workflow**: Mehrstufiger Dialog (Produkt → Bestätigung → Bestellt) erfordert OrderStatus-Tracking in der Session. Bei Themenwechsel muss der Workflow zurückgesetzt werden.
+15. **GlobalExceptionHandler**: Ohne `@RestControllerAdvice` werden Exceptions als 500 ohne Details zurückgegeben. `MethodArgumentNotValidException` muss separat als 400 behandelt werden.
+16. **Intent-Erweiterung**: Neue Keywords (sell, offer, inventory, functions, capabilities) erweitern die Erkennung. Grammatikfehler ("what do you're stuff cost?") werden durch "cost" im Regex erkannt.
 
 ## Ziel
 
 Nach dem Projekt kannst du sagen:
 
-> "Ich habe einen regelbasierten ChatBot mit Spring Boot gebaut, der Echtzeit-Chat über WebSocket, Chat-Verlauf mit JPA und Benutzer-Authentifizierung mit Spring Security unterstützt. Das Projekt hat 76 JUnit-Tests und deckt REST API, WebSocket, JPA und Security ab."
+> "Ich habe einen regelbasierten ChatBot mit Spring Boot gebaut, der Echtzeit-Chat über WebSocket, Chat-Verlauf mit JPA, Benutzer-Authentifizierung mit Spring Security und Session-basiertes Gedächtnis unterstützt. Der Bot versteht Pronomen, Follow-up-Fragen und führt mehrstufige Bestell-Workflows durch. Das Projekt hat 119 JUnit-Tests und deckt REST API, WebSocket, JPA, Security und Session-Management ab."

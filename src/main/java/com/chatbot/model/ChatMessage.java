@@ -1,5 +1,7 @@
 package com.chatbot.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -9,6 +11,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "chat_messages")
+@JsonIgnoreProperties(value = {"hibernateLazyInitializer", "handler"})
 public class ChatMessage {
 
     @Id
@@ -29,6 +32,7 @@ public class ChatMessage {
 
     /** Zeitstempel der Nachricht */
     @Column(nullable = false)
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime timestamp;
 
     public ChatMessage() {

@@ -10,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.Base64;
@@ -32,9 +33,11 @@ import java.util.Base64;
 public class WebSocketAuthInterceptor implements ChannelInterceptor {
 
     private final UserDetailsService userDetailsService;
+    private final PasswordEncoder passwordEncoder;
 
-    public WebSocketAuthInterceptor(UserDetailsService userDetailsService) {
+    public WebSocketAuthInterceptor(UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
         this.userDetailsService = userDetailsService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -57,8 +60,8 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                     try {
                         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                        // Passwort pruefen ({noop} Prefix wird von Spring Security automatisch erkannt)
-                        if (password.equals(userDetails.getPassword())) {
+                        // Passwort pruefen - PasswordEncoder erkennt {noop} Prefix automatisch
+                        if (passwordEncoder.matches(password, userDetails.getPassword())) {
                             Authentication authentication = new UsernamePasswordAuthenticationToken(
                                     userDetails, null, userDetails.getAuthorities());
                             SecurityContextHolder.getContext().setAuthentication(authentication);

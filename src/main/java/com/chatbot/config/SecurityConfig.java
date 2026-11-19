@@ -6,6 +6,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -43,6 +45,16 @@ public class SecurityConfig {
     }
 
     /**
+     * PasswordEncoder fuer Passwort-Hashing.
+     * Wird von WebSocketAuthInterceptor und UserDetailsService verwendet.
+     * DelegationPasswordEncoder erkennt {noop}, {bcrypt}, etc. Prefixe.
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    /**
      * In-Memory Benutzer fuer Demo-Zwecke.
      * In einer echten Anwendung wuerde man eine Datenbank verwenden.
      *
@@ -50,10 +62,10 @@ public class SecurityConfig {
      * Passwort: password
      */
     @Bean
-    public UserDetailsService userDetailsService() {
+    public UserDetailsService userDetailsService(PasswordEncoder passwordEncoder) {
         UserDetails user = User.builder()
                 .username("user")
-                .password("{noop}password")
+                .password(passwordEncoder.encode("password"))
                 .roles("USER")
                 .build();
         return new InMemoryUserDetailsManager(user);

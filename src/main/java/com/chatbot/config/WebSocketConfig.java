@@ -1,6 +1,7 @@
 package com.chatbot.config;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
@@ -13,10 +14,19 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
  * Nachrichten-Fluss:
  *   Client → /chat/send (zum Server)
  *   Server → /chat/response (zuruck an den Client)
+ *
+ * Authentifizierung:
+ *   WebSocketAuthInterceptor validiert die Credentials beim STOMP CONNECT.
  */
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    private final WebSocketAuthInterceptor webSocketAuthInterceptor;
+
+    public WebSocketConfig(WebSocketAuthInterceptor webSocketAuthInterceptor) {
+        this.webSocketAuthInterceptor = webSocketAuthInterceptor;
+    }
 
     /**
      * Registriert den WebSocket-Endpunkt.
@@ -37,5 +47,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         registry.enableSimpleBroker("/chat");
         registry.setApplicationDestinationPrefixes("/app");
+    }
+
+    /**
+     * Registriert den Authentifizierungs-Interceptor.
+     * Jede STOMP-Nachricht wird zuerst durch den Interceptor geleitet.
+     */
+    @Override
+    public void configureClientInboundChannel(ChannelRegistration registration) {
+        registration.interceptors(webSocketAuthInterceptor);
     }
 }

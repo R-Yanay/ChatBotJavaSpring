@@ -14,8 +14,8 @@ import org.springframework.security.web.SecurityFilterChain;
  *
  * Sicherheitsregeln:
  * - REST-API (/api/*) erfordert Authentifizierung
- * - WebSocket-Endpoint (/ws/*) erfordert Authentifizierung
- * - Statische Dateien (index.html, CSS, JS) sind offen, damit der Login funktioniert
+ * - WebSocket-Endpoint (/ws/*) ist offen, Auth erfolgt im WebSocket-Layer
+ * - Statische Dateien (index.html, CSS, JS) sind offen
  * - CSRF ist deaktiviert (stateless REST-API)
  *
  * Benutzer:
@@ -26,16 +26,16 @@ public class SecurityConfig {
 
     /**
      * Definiert die Sicherheitsregeln fuer alle HTTP-Anfragen.
-     * - Statische Ressourcen (index.html) sind frei zugreifbar
-     * - REST-API und WebSocket erfordern Authentifizierung
-     * - HTTP Basic Auth wird fuer WebSocket verwendet
+     * - Statische Ressourcen und WebSocket sind frei zugreifbar
+     * - REST-API (/api/*) erfordert Authentifizierung
+     * - WebSocket-Auth erfolgt im ChatWebSocketController via STOMP-Interceptors
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/index.html", "/error").permitAll()
+                        .requestMatchers("/", "/index.html", "/error", "/ws/**", "/h2-console/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .httpBasic(httpBasic -> {});

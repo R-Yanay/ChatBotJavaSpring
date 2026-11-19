@@ -703,8 +703,8 @@
                 return;
             }
 
-            if (!stompClient || !stompClient.connected) {
-                console.log('stompClient nicht verbunden');
+            if (!stompClient) {
+                console.log('stompClient nicht initialisiert');
                 addMessage('Nicht verbunden. Bitte Seite neu laden.', 'error');
                 return;
             }

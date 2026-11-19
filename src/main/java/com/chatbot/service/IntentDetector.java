@@ -31,8 +31,9 @@ public class IntentDetector {
                     "(?i)\\b(hi|hello|hey|good morning|good afternoon|good evening|greetings|howdy)\\b"),
 
             // ASK_PRICE — spezifisch vor ORDER
+            // Erkennt auch Grammatikfehler: "what do you're stuff cost?", "what does your stuff cost?"
             new IntentRule(Intent.ASK_PRICE,
-                    "(?i)\\b(how much|cost|price|pricetag|expensive|cheap)\\b"),
+                    "(?i)\\b(how much|cost|price|pricetag|expensive|cheap|affordable|budget)\\b"),
 
             // CANCEL — muss vor ORDER, da "cancel my order" das Wort "order" enthaelt
             new IntentRule(Intent.CANCEL,
@@ -130,11 +131,33 @@ public class IntentDetector {
     }
 
     /**
-     * Prueft, ob die Nachricht eine Follow-up-Frage ist (mit "and" am Anfang).
+     * Prueft, ob die Nachricht eine Follow-up-Frage ist.
+     * Erkennt: "and pants?", "what about shirts?", "how much?" (ohne Produkt), "tell me about X"
+     * Wichtig: "How much is a shirt?" ist KEINE Follow-up — das ist eine normale ASK_PRICE-Frage.
      */
     private boolean isFollowUp(String message) {
         String lower = message.toLowerCase().trim();
-        return lower.startsWith("and ") || lower.startsWith("and,");
+        // "and X?" — Follow-up mit neuem Produkt
+        if (lower.startsWith("and ") || lower.startsWith("and,")) {
+            return true;
+        }
+        // "what about X?" — Follow-up mit neuem Produkt
+        if (lower.startsWith("what about ") || lower.startsWith("what about,")) {
+            return true;
+        }
+        // "how much?" — nur wenn KEIN Produkt genannt (reine Follow-up)
+        if (lower.equals("how much?") || lower.equals("how much")) {
+            return true;
+        }
+        // "tell me about X" — Follow-up
+        if (lower.startsWith("tell me about ")) {
+            return true;
+        }
+        // "any info on X" — Follow-up
+        if (lower.startsWith("any info on ")) {
+            return true;
+        }
+        return false;
     }
 
     /**

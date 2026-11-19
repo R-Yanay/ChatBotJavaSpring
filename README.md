@@ -474,6 +474,48 @@ ChatBotJavaSpring/
 | WordRecognition | CRNN (Deep Learning) | REST API | 33 JUnit-Tests |
 | **ChatBotJavaSpring** | **Regelbasiert (kein ML)** | **REST + WebSocket + JPA + Security + Session** | **119 JUnit-Tests** |
 
+## Grenzen des regelbasierten Ansatzes
+
+Dieser ChatBot verwendet **Regex-basierte Intent-Erkennung** — ein einfacher, transparenter Ansatz, der schnell funktionsfaehig ist. Er hat jedoch klare Grenzen:
+
+| Grenze | Beispiel | Warum es nicht funktioniert |
+|--------|----------|----------------------------|
+| **Natuerliche Sprache** | "I'm looking for something affordable for summer" | Kein Keyword wie "how much" oder "price" enthalten |
+| **Grammatikfehler** | "How much cost the shrit?" | "shrit" passt nicht im EntityExtractor, "how much cost" ist ungewoehnlige Wortreihenfolge |
+| **Offene Fragen** | "What's the difference between a shirt and a t-shirt?" | Kein passender Intent, Bot antwortet mit Fallback |
+| **Mehrsprachigkeit** | "Wie viel kostet ein Shirt?" | Regex-Regeln sind nur auf Englisch |
+| **Kontext-Verlust** | "I want to order" → (5 Min Pause) → "a shirt" | Session-Timeout nach 30 Min, aber Workflow-Status geht verloren |
+| **Skalierung** | 100+ Intents mit je 20 Keywords | Regex-Regeln werden unuebersichtlich und kollidieren |
+
+### Was funktioniert trotzdem gut?
+
+| Szenario | Erkennungsrate |
+|----------|---------------|
+| **Feste Fragen** (FAQ) | ~95% — "How much is a shirt?" wird immer erkannt |
+| **Bestell-Workflow** | ~90% — "I want to order 2 pants" funktioniert zuverlaessig |
+| **Follow-up-Fragen** | ~80% — "what about jeans?" wird mit letztem Intent kombiniert |
+| **Pronomen** | ~75% — "it" referenziert das letzte Produkt |
+
+### Vergleich: Regelbasiert vs. NLU vs. LLM
+
+| Feature | Regelbasiert (dieser Bot) | NLU (Rasa, Dialogflow) | LLM (ChatGPT API) |
+|---------|--------------------------|------------------------|-------------------|
+| **Intent-Erkennung** | Regex-Matching | ML-Modell mit Trainingsbeispielen | Sprachverstaendnis |
+| **"How much is a shirt?"** | ✅ "how much" gefunden | ✅ Aehnlich zu Beispielen | ✅ Versteht die Frage |
+| **"Is there anything affordable?"** | ❌ Kein Keyword | ✅ "affordable" ≈ "cheap" | ✅ Versteht "affordable" |
+| **"I'm looking for summer stuff"** | ❌ Komplett falsch | ⚠️ Teilweise | ✅ Vollstaendig |
+| **Skalierung** | 10–50 Regeln OK | 50–500 Intents OK | Unbegrenzt |
+| **Kosten** | 0 € | 0 € (Open Source) | ~0.01 € pro Gespraech |
+| **Setup** | Einfach | Mittel | Einfach (API-Schluessel) |
+
+### Weg zu ChatBot V2
+
+Um diese Grenzen zu ueberwinden, koennte ein ChatBot V2 folgende Technologien verwenden:
+
+1. **NLU-Plattform** (Rasa, Dialogflow): Statt Regex-Regeln werden Trainingsbeispiele verwendet. Das Modell lernt, verschiedene Formulierungen fuer denselben Intent zu erkennen.
+2. **LLM-Integration** (ChatGPT API, Open-Source LLMs): Ein System-Prompt ersetzt manuelle Regeln. Der Bot versteht jede Formulierung und antwortet in natuerlicher Sprache.
+3. **Hybrid-Ansatz**: LLM fuer offene Konversation + feste Intents fuer kritische Aktionen (Bestellung, Zahlung) + menschliche Eskalation bei Unsicherheit.
+
 ## Lessons Learned
 
 1. **Intent-Reihenfolge ist kritisch**: CANCEL und RETURN müssen vor ORDER erkannt werden, da "cancel my order" und "I want to return" auch ORDER-Keywords enthalten. HELP muss vor ASK_PRICE, da "tell me about" auch "about" enthält.
@@ -492,6 +534,8 @@ ChatBotJavaSpring/
 14. **Bestell-Workflow**: Mehrstufiger Dialog (Produkt → Bestätigung → Bestellt) erfordert OrderStatus-Tracking in der Session. Bei Themenwechsel muss der Workflow zurückgesetzt werden.
 15. **GlobalExceptionHandler**: Ohne `@RestControllerAdvice` werden Exceptions als 500 ohne Details zurückgegeben. `MethodArgumentNotValidException` muss separat als 400 behandelt werden.
 16. **Intent-Erweiterung**: Neue Keywords (sell, offer, inventory, functions, capabilities) erweitern die Erkennung. Grammatikfehler ("what do you're stuff cost?") werden durch "cost" im Regex erkannt.
+17. **Wortgrenzen bei Entity-Extraktion**: `contains()` fuehrt zu False-Positives ("hat" in "what"). Loesung: `\b` Wortgrenzen in Regex verwenden.
+18. **Regelbasierte Grenzen**: Der Bot erkennt nur vordefinierte Keywords. Natuerliche Sprache, Grammatikfehler und offene Fragen werden nicht verstanden — ein ChatBot V2 mit NLU/LLM waere noetig.
 
 ## Ziel
 

@@ -396,14 +396,15 @@ ChatBotJavaSpring/
 
 1. **Intent-Reihenfolge ist kritisch**: CANCEL und RETURN müssen vor ORDER erkannt werden, da "cancel my order" und "I want to return" auch ORDER-Keywords enthalten.
 2. **Spring Security CSRF**: CSRF muss für REST-API deaktiviert werden, sonst blockiert es alle POST-Anfragen mit 403.
-3. **WebSocket Auth**: HTTP Basic Auth funktioniert über STOMP-Connect-Header mit Base64-encoded Credentials.
-4. **H2 In-Memory Database**: Keine Installation nötig, aber Daten gehen beim Neustart verloren — perfekt für Demos.
-5. **SockJS Fallback**: WebSocket-Verbindung funktioniert auch, wenn der Browser WebSocket nicht direkt unterstützt.
-6. **Regelbasiert vs. Deep Learning**: Regelbasierte KI ist sofort funktionsfähig, aber skaliert schlecht ab 100+ Regeln.
-7. **Entity-Extraktion**: Einfache String-Matching reicht für kleine Kataloge, aber NLP wäre nötig für echte Anwendungen.
-8. **Chat-Verlauf**: JPA mit `@OrderBy` und `setMaxResults` ist einfach, aber `@Param` in JPQL ohne `setMaxResults` funktioniert nicht.
-9. **Frontend Login**: WebSocket-Auth erfordert, dass der Login-Screen statisch (ohne Auth) zugänglich ist.
-10. **Java 25 + Mockito**: Mockito Inline-Mocking funktioniert nicht mit Java 25 — echte Objekte statt Mocks verwenden.
+3. **WebSocket Auth via REST-API**: SockJS leitet benutzerdefinierte STOMP-Header nicht zuverlässig weiter. Lösung: Credentials zuerst über REST-API (HTTP Basic Auth) validieren, dann WebSocket ohne Auth-Header verbinden.
+4. **StompJs v7 mit SockJS**: Native WebSocket (`ws://`) funktioniert nicht mit Spring `withSockJS()`. Stattdessen `webSocketFactory` mit `new SockJS('/ws')` verwenden.
+5. **H2 In-Memory Database**: Keine Installation nötig, aber Daten gehen beim Neustart verloren — perfekt für Demos.
+6. **SockJS Fallback**: WebSocket-Verbindung funktioniert auch, wenn der Browser WebSocket nicht direkt unterstützt.
+7. **Regelbasiert vs. Deep Learning**: Regelbasierte KI ist sofort funktionsfähig, aber skaliert schlecht ab 100+ Regeln.
+8. **Entity-Extraktion**: Einfache String-Matching reicht für kleine Kataloge, aber NLP wäre nötig für echte Anwendungen.
+9. **Chat-Verlauf**: JPA mit `@OrderBy` und `setMaxResults` ist einfach, aber `@Param` in JPQL ohne `setMaxResults` funktioniert nicht.
+10. **Frontend Login**: WebSocket-Auth erfordert, dass der Login-Screen statisch (ohne Auth) zugänglich ist.
+11. **Java 25 + Mockito**: Mockito Inline-Mocking funktioniert nicht mit Java 25 — echte Objekte statt Mocks verwenden.
 
 ## Ziel
 
